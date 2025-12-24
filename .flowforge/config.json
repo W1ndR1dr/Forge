@@ -1,0 +1,16 @@
+{
+  "version": "1.0.0",
+  "project": {
+    "name": "FlowForge",
+    "main_branch": "main",
+    "claude_md_path": "CLAUDE.md",
+    "build_command": "pip install -e . && python -m pytest",
+    "test_command": null,
+    "worktree_base": ".flowforge-worktrees",
+    "default_persona": null,
+    "claude_command": "claude",
+    "claude_flags": [
+      "--dangerously-skip-permissions"
+    ]
+  }
+}
