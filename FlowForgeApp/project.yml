@@ -1,0 +1,33 @@
+name: FlowForgeApp
+options:
+  bundleIdPrefix: com.flowforge
+  deploymentTarget:
+    macOS: "14.0"
+  defaultConfig: Debug
+  createIntermediateGroups: true
+  groupSortPosition: top
+  generateEmptyDirectories: false
+
+targets:
+  FlowForgeApp:
+    type: application
+    platform: macOS
+    sources:
+      - App
+      - Models
+      - Views
+      - Services
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.flowforge.app
+        INFOPLIST_FILE: App/Info.plist
+        PRODUCT_NAME: FlowForge
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        SWIFT_VERSION: "5.9"
+        ENABLE_PREVIEWS: YES
+        DEVELOPMENT_TEAM: ""
+      configs:
+        Debug:
+          SWIFT_OPTIMIZATION_LEVEL: "-Onone"
+        Release:
+          SWIFT_OPTIMIZATION_LEVEL: "-O"
