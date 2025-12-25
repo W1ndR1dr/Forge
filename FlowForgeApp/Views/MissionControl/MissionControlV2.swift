@@ -59,6 +59,9 @@ struct MissionControlV2: View {
                     // Level 1: Today's Mission (single focus)
                     todaysMissionSection
 
+                    // Active Workspaces (parallel development)
+                    ActiveWorkspacesSection()
+
                     // Level 2: The Pipeline (peripheral awareness)
                     pipelineSection
 
