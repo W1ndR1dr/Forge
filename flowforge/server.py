@@ -21,6 +21,10 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .mcp_server import FlowForgeMCPServer, create_mcp_response
+from .brainstorm import parse_proposals, Proposal, ProposalStatus
+from .prompt_builder import PromptBuilder
+from .registry import FeatureRegistry
+from .intelligence import IntelligenceEngine
 
 
 # =============================================================================
@@ -281,6 +285,137 @@ async def delete_feature(
     if not result.success:
         raise HTTPException(status_code=400, detail=result.message)
     return {"success": True, "message": f"Feature {feature_id} deleted"}
+
+
+# =============================================================================
+# Prompt Generation Endpoint
+# =============================================================================
+
+
+@app.get("/api/{project}/features/{feature_id}/prompt")
+async def get_feature_prompt(project: str, feature_id: str):
+    """Generate and return implementation prompt for a feature."""
+    config = get_config()
+    project_path = config["projects_base"] / project
+
+    if not (project_path / ".flowforge").exists():
+        raise HTTPException(status_code=404, detail=f"Project not found: {project}")
+
+    registry = FeatureRegistry.load(project_path)
+    feature = registry.get_feature(feature_id)
+
+    if not feature:
+        raise HTTPException(status_code=404, detail=f"Feature not found: {feature_id}")
+
+    intelligence = IntelligenceEngine(project_path)
+    prompt_builder = PromptBuilder(project_path, registry, intelligence)
+
+    prompt = prompt_builder.build_for_feature(
+        feature_id,
+        include_experts=True,
+        include_research=True,
+    )
+
+    return {"prompt": prompt, "feature_id": feature_id}
+
+
+# =============================================================================
+# Brainstorm / Proposal Endpoints
+# =============================================================================
+
+
+class BrainstormParseRequest(BaseModel):
+    """Request to parse brainstorm output."""
+    claude_output: str
+
+
+class ProposalResponse(BaseModel):
+    """A proposal from brainstorm parsing."""
+    title: str
+    description: str
+    priority: int
+    complexity: str
+    tags: list[str]
+    rationale: str
+    status: str
+
+
+@app.post("/api/{project}/brainstorm/parse")
+async def parse_brainstorm_output(project: str, request: BrainstormParseRequest):
+    """Parse brainstorm output into structured proposals."""
+    proposals = parse_proposals(request.claude_output)
+
+    return {
+        "proposals": [
+            {
+                "title": p.title,
+                "description": p.description,
+                "priority": p.priority,
+                "complexity": p.complexity,
+                "tags": p.tags,
+                "rationale": p.rationale,
+                "status": p.status.value,
+            }
+            for p in proposals
+        ],
+        "count": len(proposals),
+    }
+
+
+class ApproveProposalsRequest(BaseModel):
+    """Request to approve and add proposals to registry."""
+    proposals: list[dict]  # List of proposal dicts to add
+
+
+@app.post("/api/{project}/proposals/approve")
+async def approve_proposals(project: str, request: ApproveProposalsRequest):
+    """Add approved proposals to the feature registry."""
+    config = get_config()
+    project_path = config["projects_base"] / project
+
+    if not (project_path / ".flowforge").exists():
+        raise HTTPException(status_code=404, detail=f"Project not found: {project}")
+
+    registry = FeatureRegistry.load(project_path)
+
+    added = []
+    skipped = []
+
+    for proposal_dict in request.proposals:
+        proposal = Proposal.from_dict(proposal_dict)
+        feature_id = FeatureRegistry.generate_id(proposal.title)
+
+        # Skip if exists
+        if registry.get_feature(feature_id):
+            skipped.append(proposal.title)
+            continue
+
+        # Import Feature and Complexity here to avoid circular import at top
+        from .registry import Feature, Complexity
+
+        # Map complexity string to enum
+        try:
+            complexity_enum = Complexity(proposal.complexity)
+        except ValueError:
+            complexity_enum = Complexity.MEDIUM
+
+        feature = Feature(
+            id=feature_id,
+            title=proposal.title,
+            description=proposal.description,
+            priority=proposal.priority,
+            complexity=complexity_enum,
+            tags=proposal.tags,
+        )
+        registry.add_feature(feature)
+        added.append(proposal.title)
+
+    return {
+        "added": added,
+        "skipped": skipped,
+        "added_count": len(added),
+        "skipped_count": len(skipped),
+    }
 
 
 # =============================================================================

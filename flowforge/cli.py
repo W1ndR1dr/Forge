@@ -38,6 +38,14 @@ from .intelligence import IntelligenceEngine
 from .prompt_builder import PromptBuilder
 from .merge import MergeOrchestrator
 from .init import EnhancedInitializer, ProjectContext
+from .brainstorm import (
+    BrainstormSession,
+    parse_proposals,
+    save_proposals,
+    load_proposals,
+    Proposal,
+    ProposalStatus,
+)
 
 app = typer.Typer(
     name="forge",
@@ -134,6 +142,165 @@ def init(
         console.print(f"✅ Imported [green]{count}[/green] features")
 
     console.print("\n🎉 FlowForge initialized! Run [cyan]forge add[/cyan] to add features.")
+
+
+@app.command()
+def brainstorm(
+    project: Optional[str] = typer.Option(None, "--project", "-p", help="Project name (for multi-project)"),
+    paste: bool = typer.Option(False, "--paste", help="Paste Claude output to parse proposals"),
+    review: Optional[str] = typer.Option(None, "--review", "-r", help="Review saved brainstorm session"),
+):
+    """
+    Start a brainstorming session with Claude.
+
+    Launches an interactive Claude session with a product strategist system prompt.
+    When satisfied with ideas, say "that looks good" and Claude will output
+    structured proposals in READY_FOR_APPROVAL format.
+
+    Use --paste to parse Claude output you've copied.
+    Use --review to review proposals from a saved session.
+    """
+    project_root, config, registry = get_context()
+
+    # Read project context
+    project_context = None
+    context_path = project_root / ".flowforge" / "project-context.md"
+    if context_path.exists():
+        project_context = context_path.read_text()
+
+    # Get existing features for context
+    existing_features = [f.title for f in registry.list_features()]
+
+    if review:
+        # Review saved session
+        proposals = load_proposals(project_root, review)
+        if not proposals:
+            console.print(f"[red]No proposals found for session: {review}[/red]")
+            raise typer.Exit(1)
+        _review_proposals(proposals, registry, project_root)
+        return
+
+    if paste:
+        # Parse pasted output
+        console.print("Paste the Claude output with READY_FOR_APPROVAL marker (Ctrl+D when done):\n")
+        import sys
+        pasted_text = sys.stdin.read()
+
+        proposals = parse_proposals(pasted_text)
+        if not proposals:
+            console.print("[yellow]No proposals found in output.[/yellow]")
+            console.print("[dim]Make sure Claude included the READY_FOR_APPROVAL marker.[/dim]")
+            raise typer.Exit(1)
+
+        console.print(f"\n[green]Found {len(proposals)} proposal(s)![/green]\n")
+        _review_proposals(proposals, registry, project_root)
+        return
+
+    # Interactive brainstorm session
+    session = BrainstormSession(
+        project_root=project_root,
+        project_name=config.project.name,
+        project_context=project_context,
+        existing_features=existing_features,
+    )
+
+    console.print(Panel(
+        "[bold]Brainstorming Session[/bold]\n\n"
+        "Chat with Claude about feature ideas.\n"
+        "When ready, say 'that looks good' or 'ready to add these'.\n"
+        "Claude will output structured proposals.\n\n"
+        "[dim]After the session, run:[/dim]\n"
+        "[cyan]forge brainstorm --paste[/cyan] and paste the READY_FOR_APPROVAL output.",
+        title=f"FlowForge: {config.project.name}",
+    ))
+
+    session.start_interactive()
+
+    # After session, prompt to parse
+    console.print("\n[yellow]Session ended.[/yellow]")
+    console.print("\nIf Claude output proposals, run:")
+    console.print("  [cyan]forge brainstorm --paste[/cyan]")
+    console.print("Then paste the READY_FOR_APPROVAL output to review proposals.")
+
+
+def _review_proposals(proposals: list[Proposal], registry: FeatureRegistry, project_root: Path):
+    """Interactive review of proposals - approve, decline, or defer each one."""
+    console.print(f"\n[bold]Review {len(proposals)} Proposal(s)[/bold]\n")
+
+    approved = []
+    declined = []
+    deferred = []
+
+    for i, proposal in enumerate(proposals, 1):
+        priority_color = "red" if proposal.priority == 1 else "yellow" if proposal.priority <= 3 else "dim"
+
+        console.print(Panel(
+            f"[bold]{proposal.title}[/bold]\n\n"
+            f"{proposal.description}\n\n"
+            f"[dim]Priority:[/dim] [{priority_color}]P{proposal.priority}[/{priority_color}]\n"
+            f"[dim]Complexity:[/dim] {proposal.complexity}\n"
+            f"[dim]Tags:[/dim] {', '.join(proposal.tags) if proposal.tags else '(none)'}\n"
+            f"[dim]Rationale:[/dim] {proposal.rationale or '(none)'}",
+            title=f"Proposal {i}/{len(proposals)}",
+        ))
+
+        choice = Prompt.ask(
+            "Action",
+            choices=["a", "d", "s", "q"],
+            default="a",
+        )
+
+        if choice == "a":
+            proposal.status = ProposalStatus.APPROVED
+            approved.append(proposal)
+            console.print("[green]✓ Approved[/green]\n")
+        elif choice == "d":
+            proposal.status = ProposalStatus.DECLINED
+            declined.append(proposal)
+            console.print("[red]✗ Declined[/red]\n")
+        elif choice == "s":
+            proposal.status = ProposalStatus.DEFERRED
+            deferred.append(proposal)
+            console.print("[yellow]⏸ Deferred[/yellow]\n")
+        elif choice == "q":
+            console.print("[yellow]Review cancelled.[/yellow]")
+            break
+
+    # Summary
+    console.print("\n" + "=" * 60)
+    console.print(f"\n[bold]Review Summary[/bold]\n")
+    console.print(f"  [green]Approved:[/green] {len(approved)}")
+    console.print(f"  [red]Declined:[/red] {len(declined)}")
+    console.print(f"  [yellow]Deferred:[/yellow] {len(deferred)}")
+
+    if approved:
+        if Confirm.ask(f"\nAdd {len(approved)} approved proposal(s) to registry?"):
+            for proposal in approved:
+                feature_id = FeatureRegistry.generate_id(proposal.title)
+
+                # Skip if exists
+                if registry.get_feature(feature_id):
+                    console.print(f"[yellow]Skipping '{proposal.title}' - already exists[/yellow]")
+                    continue
+
+                feature = Feature(
+                    id=feature_id,
+                    title=proposal.title,
+                    description=proposal.description,
+                    priority=proposal.priority,
+                    complexity=Complexity(proposal.complexity) if proposal.complexity in [c.value for c in Complexity] else Complexity.MEDIUM,
+                    tags=proposal.tags,
+                )
+                registry.add_feature(feature)
+                console.print(f"[green]✓ Added: {proposal.title}[/green]")
+
+            console.print(f"\n[green]✅ Added {len(approved)} features to registry![/green]")
+
+    # Save session if there are deferred proposals
+    if deferred:
+        session_path = save_proposals(project_root, proposals)
+        console.print(f"\n[dim]Deferred proposals saved to: {session_path}[/dim]")
+        console.print(f"[dim]Review later with: forge brainstorm --review {session_path.stem}[/dim]")
 
 
 @app.command()

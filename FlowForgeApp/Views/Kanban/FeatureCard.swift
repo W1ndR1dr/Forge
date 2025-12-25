@@ -4,9 +4,15 @@ import UniformTypeIdentifiers
 struct FeatureCard: View {
     @Environment(AppState.self) private var appState
     let feature: Feature
+    let projectName: String
 
     @State private var isHovering = false
     @State private var showingDetails = false
+    @State private var showingEdit = false
+    @State private var isCopyingPrompt = false
+    @State private var showCopiedToast = false
+
+    private let apiClient = APIClient()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -79,10 +85,63 @@ struct FeatureCard: View {
         .onHover { hovering in
             isHovering = hovering
         }
+        .overlay(alignment: .topTrailing) {
+            // Quick action buttons on hover
+            if isHovering {
+                HStack(spacing: 4) {
+                    // Copy prompt button
+                    Button(action: copyPromptToClipboard) {
+                        Image(systemName: isCopyingPrompt ? "hourglass" : "doc.on.clipboard")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Copy implementation prompt")
+                    .disabled(isCopyingPrompt)
+
+                    // Edit button
+                    Button(action: { showingEdit = true }) {
+                        Image(systemName: "pencil")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Edit feature")
+                }
+                .padding(6)
+                .background(
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color(NSColor.windowBackgroundColor).opacity(0.9))
+                )
+                .transition(.opacity)
+            }
+        }
+        .overlay(alignment: .bottom) {
+            // Toast notification
+            if showCopiedToast {
+                Text("Prompt copied!")
+                    .font(.caption)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.green.opacity(0.9))
+                    .foregroundColor(.white)
+                    .clipShape(Capsule())
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .padding(.bottom, 8)
+            }
+        }
         .draggable(feature.id)
         .contextMenu {
             Button("View Details") {
                 showingDetails = true
+            }
+
+            Button("Edit Feature") {
+                showingEdit = true
+            }
+
+            Button("Copy Prompt") {
+                copyPromptToClipboard()
             }
 
             Divider()
@@ -109,6 +168,48 @@ struct FeatureCard: View {
         }
         .sheet(isPresented: $showingDetails) {
             FeatureDetailSheet(feature: feature)
+        }
+        .sheet(isPresented: $showingEdit) {
+            FeatureEditSheet(feature: feature, projectName: projectName)
+        }
+    }
+
+    // MARK: - Actions
+
+    private func copyPromptToClipboard() {
+        isCopyingPrompt = true
+
+        Task {
+            do {
+                let prompt = try await apiClient.getPrompt(
+                    project: projectName,
+                    featureId: feature.id
+                )
+
+                await MainActor.run {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(prompt, forType: .string)
+
+                    isCopyingPrompt = false
+
+                    withAnimation {
+                        showCopiedToast = true
+                    }
+
+                    // Hide toast after 2 seconds
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                        withAnimation {
+                            showCopiedToast = false
+                        }
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    isCopyingPrompt = false
+                    // Could show error toast here
+                    print("Failed to copy prompt: \(error)")
+                }
+            }
         }
     }
 
@@ -311,7 +412,8 @@ struct DetailRow: View {
                 complexity: .medium,
                 branch: "feature/sample",
                 tags: ["ui", "backend", "important"]
-            )
+            ),
+            projectName: "TestProject"
         )
 
         FeatureCard(
@@ -320,7 +422,8 @@ struct DetailRow: View {
                 title: "Simple Feature",
                 status: .planned,
                 complexity: .small
-            )
+            ),
+            projectName: "TestProject"
         )
     }
     .environment(AppState())

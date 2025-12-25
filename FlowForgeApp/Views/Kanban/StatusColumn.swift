@@ -6,6 +6,7 @@ struct StatusColumn: View {
 
     let status: FeatureStatus
     let features: [Feature]
+    let projectName: String
 
     @State private var isTargeted = false
 
@@ -36,7 +37,7 @@ struct StatusColumn: View {
             ScrollView {
                 LazyVStack(spacing: 8) {
                     ForEach(features) { feature in
-                        FeatureCard(feature: feature)
+                        FeatureCard(feature: feature, projectName: projectName)
                     }
 
                     if features.isEmpty {
@@ -100,7 +101,8 @@ struct StatusColumn: View {
                     status: .planned,
                     complexity: .small
                 ),
-            ]
+            ],
+            projectName: "TestProject"
         )
 
         StatusColumn(
@@ -112,7 +114,8 @@ struct StatusColumn: View {
                     status: .inProgress,
                     complexity: .large
                 ),
-            ]
+            ],
+            projectName: "TestProject"
         )
     }
     .environment(AppState())

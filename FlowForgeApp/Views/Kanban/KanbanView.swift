@@ -47,7 +47,8 @@ struct KanbanView: View {
                     ForEach(displayedStatuses, id: \.self) { status in
                         StatusColumn(
                             status: status,
-                            features: appState.features(for: status)
+                            features: appState.features(for: status),
+                            projectName: appState.selectedProject?.name ?? ""
                         )
                     }
                 }
