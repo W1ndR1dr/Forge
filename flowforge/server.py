@@ -235,6 +235,54 @@ async def add_feature(project: str, request: AddFeatureRequest):
     return result.data
 
 
+class UpdateFeatureRequest(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[str] = None
+    priority: Optional[int] = None
+    complexity: Optional[str] = None
+    tags: Optional[list[str]] = None
+
+
+@app.patch("/api/{project}/features/{feature_id}")
+async def update_feature(
+    project: str,
+    feature_id: str,
+    request: UpdateFeatureRequest,
+):
+    """Update a feature's attributes."""
+    result = mcp_server._update_feature(
+        project,
+        feature_id,
+        title=request.title,
+        description=request.description,
+        status=request.status,
+        priority=request.priority,
+        complexity=request.complexity,
+        tags=request.tags,
+    )
+    if not result.success:
+        raise HTTPException(status_code=400, detail=result.message)
+    return result.data
+
+
+class DeleteFeatureRequest(BaseModel):
+    force: bool = False
+
+
+@app.delete("/api/{project}/features/{feature_id}")
+async def delete_feature(
+    project: str,
+    feature_id: str,
+    force: bool = False,
+):
+    """Delete a feature from the registry."""
+    result = mcp_server._delete_feature(project, feature_id, force)
+    if not result.success:
+        raise HTTPException(status_code=400, detail=result.message)
+    return {"success": True, "message": f"Feature {feature_id} deleted"}
+
+
 # =============================================================================
 # Web UI
 # =============================================================================

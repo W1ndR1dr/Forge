@@ -26,6 +26,7 @@ class PromptContext:
     expert_preamble: Optional[str] = None
     dependency_context: Optional[str] = None
     worktree_path: Optional[Path] = None
+    project_context: Optional[str] = None  # From project-context.md
 
 
 class PromptBuilder:
@@ -123,6 +124,13 @@ class PromptBuilder:
 
         return "## Dependencies\n\nThis feature depends on:\n" + "\n".join(dep_info)
 
+    def _read_project_context(self) -> Optional[str]:
+        """Read project context from .flowforge/project-context.md."""
+        context_path = self.project_root / ".flowforge" / "project-context.md"
+        if not context_path.exists():
+            return None
+        return context_path.read_text()
+
     def gather_context(
         self,
         feature_id: str,
@@ -139,7 +147,10 @@ class PromptBuilder:
         if not feature:
             raise ValueError(f"Feature not found: {feature_id}")
 
-        # Read project context
+        # Read project context (from enhanced init)
+        project_context = self._read_project_context()
+
+        # Read CLAUDE.md
         claude_md_content = self._read_claude_md(claude_md_path)
 
         # Read feature spec
@@ -176,11 +187,18 @@ class PromptBuilder:
             expert_preamble=expert_preamble,
             dependency_context=dependency_context,
             worktree_path=Path(feature.worktree_path) if feature.worktree_path else None,
+            project_context=project_context,
         )
 
     def build(self, context: PromptContext) -> str:
         """
         Build the final implementation prompt from gathered context.
+
+        Uses the AGI-pilled prompt template with:
+        - Expert consultation patterns (Claude decides who)
+        - Research guidance (Claude decides when)
+        - Vibecoder context
+        - Plan mode + ultrathink instructions
         """
         sections = []
 
@@ -203,9 +221,26 @@ class PromptBuilder:
             sections.append(context.research_synthesis)
             sections.append("")
 
-        # Expert perspectives (if no research synthesis)
+        # Expert perspectives (if research was done, these were synthesized)
         if context.expert_preamble and not context.research_synthesis:
             sections.append(context.expert_preamble)
+            sections.append("")
+        elif not context.research_synthesis:
+            # Add the expert consultation pattern for Claude to follow
+            sections.append("## Expert Consultation")
+            sections.append("")
+            sections.append("Consider perspectives from domain experts relevant to this feature.")
+            sections.append("Identify 2-3 real-world experts whose viewpoints would be valuable.")
+            sections.append("Synthesize their approaches in your implementation.")
+            sections.append("")
+
+        # Research guidance pattern
+        if not context.research_synthesis:
+            sections.append("## Research Guidance")
+            sections.append("")
+            sections.append("If this feature involves novel patterns, complex architecture, or")
+            sections.append("unfamiliar APIs, conduct web research before implementing.")
+            sections.append("Cite official documentation where applicable.")
             sections.append("")
 
         # Feature specification
@@ -219,23 +254,33 @@ class PromptBuilder:
             sections.append(context.dependency_context)
             sections.append("")
 
-        # Project context
+        # Project context (from enhanced init)
+        if context.project_context:
+            sections.append("## Project Vision")
+            sections.append(context.project_context)
+            sections.append("")
+
+        # CLAUDE.md content
         sections.append("## Project Context")
         sections.append(context.claude_md_content)
         sections.append("")
 
-        # Implementation instructions
+        # Implementation instructions (AGI-pilled)
         sections.append("## Instructions")
-        sections.append("""
-Implement this feature following the project conventions above.
-
-When complete:
-1. Commit your changes with conventional commit format
-2. Ensure any new files follow existing patterns
-3. Test manually on the target device/environment
-
-Ask clarifying questions if the specification is unclear before proceeding.
-""")
+        sections.append("")
+        sections.append("You're helping a novice vibecoder who isn't a Git expert.")
+        sections.append("All Git operations should be explained and handled safely.")
+        sections.append("")
+        sections.append("**Engage plan mode and ultrathink before implementing.**")
+        sections.append("Present your plan for approval before writing code.")
+        sections.append("")
+        sections.append("When complete:")
+        sections.append("1. Commit your changes with conventional commit format")
+        sections.append("2. Ensure any new files follow existing patterns")
+        sections.append("3. Test manually on the target device/environment")
+        sections.append("")
+        sections.append("Ask clarifying questions if the specification is unclear before proceeding.")
+        sections.append("")
 
         return "\n".join(sections)
 

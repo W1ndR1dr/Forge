@@ -664,6 +664,100 @@ class FlowForgeMCPServer:
             },
         )
 
+    def _update_feature(
+        self,
+        project: str,
+        feature_id: str,
+        title: Optional[str] = None,
+        description: Optional[str] = None,
+        status: Optional[str] = None,
+        priority: Optional[int] = None,
+        complexity: Optional[str] = None,
+        tags: Optional[list[str]] = None,
+    ) -> MCPToolResult:
+        """Update a feature's attributes."""
+        try:
+            project_path, config, registry = self._get_project_context(project)
+        except ValueError as e:
+            return MCPToolResult(success=False, message=str(e))
+
+        feature = registry.get_feature(feature_id)
+        if not feature:
+            return MCPToolResult(
+                success=False,
+                message=f"Feature not found: {feature_id}",
+            )
+
+        # Build updates dict from non-None values
+        updates = {}
+        if title is not None:
+            updates["title"] = title
+        if description is not None:
+            updates["description"] = description
+        if status is not None:
+            updates["status"] = status
+        if priority is not None:
+            updates["priority"] = priority
+        if complexity is not None:
+            updates["complexity"] = complexity
+        if tags is not None:
+            updates["tags"] = tags
+
+        if not updates:
+            return MCPToolResult(
+                success=False,
+                message="No updates provided",
+            )
+
+        try:
+            updated_feature = registry.update_feature(feature_id, **updates)
+            self._invalidate_cache(project)
+
+            return MCPToolResult(
+                success=True,
+                message=f"Updated feature: {updated_feature.title}",
+                data={
+                    "feature_id": feature_id,
+                    "title": updated_feature.title,
+                    "status": updated_feature.status.value,
+                    "priority": updated_feature.priority,
+                    "tags": updated_feature.tags,
+                },
+            )
+        except ValueError as e:
+            return MCPToolResult(success=False, message=str(e))
+
+    def _delete_feature(
+        self,
+        project: str,
+        feature_id: str,
+        force: bool = False,
+    ) -> MCPToolResult:
+        """Delete a feature from the registry."""
+        try:
+            project_path, config, registry = self._get_project_context(project)
+        except ValueError as e:
+            return MCPToolResult(success=False, message=str(e))
+
+        feature = registry.get_feature(feature_id)
+        if not feature:
+            return MCPToolResult(
+                success=False,
+                message=f"Feature not found: {feature_id}",
+            )
+
+        try:
+            registry.remove_feature(feature_id, force=force)
+            self._invalidate_cache(project)
+
+            return MCPToolResult(
+                success=True,
+                message=f"Deleted feature: {feature.title}",
+                data={"feature_id": feature_id},
+            )
+        except ValueError as e:
+            return MCPToolResult(success=False, message=str(e))
+
 
 # =============================================================================
 # MCP Protocol Handler

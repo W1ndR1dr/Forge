@@ -37,6 +37,7 @@ from .worktree import WorktreeManager, ClaudeCodeLauncher
 from .intelligence import IntelligenceEngine
 from .prompt_builder import PromptBuilder
 from .merge import MergeOrchestrator
+from .init import EnhancedInitializer, ProjectContext
 
 app = typer.Typer(
     name="forge",
@@ -71,8 +72,18 @@ def init(
     from_roadmap: Optional[Path] = typer.Option(
         None, "--from-roadmap", help="Import features from markdown files"
     ),
+    quick: bool = typer.Option(False, "--quick", "-q", help="Skip interactive questions"),
 ):
-    """Initialize FlowForge in the current directory."""
+    """
+    Initialize FlowForge in the current directory.
+
+    Runs an enhanced initialization that:
+    - Scans existing docs (README, CLAUDE.md, etc.)
+    - Asks about your project vision and philosophy
+    - Generates project-context.md for richer prompts
+
+    Use --quick to skip interactive questions.
+    """
     project_root = Path.cwd()
 
     if (project_root / ".flowforge").exists():
@@ -81,10 +92,19 @@ def init(
 
     console.print(f"\n🔨 Initializing FlowForge in [cyan]{project_root}[/cyan]\n")
 
+    # Run enhanced initialization
+    initializer = EnhancedInitializer(project_root)
+    context = initializer.run(interactive=not quick)
+
+    if context is None:
+        raise typer.Exit(0)
+
     # Detect project settings
     detected = detect_project_settings(project_root)
     if name:
         detected.name = name
+    else:
+        detected.name = context.name
 
     # Create config
     config = FlowForgeConfig(project=detected)
@@ -97,9 +117,13 @@ def init(
     (project_root / ".flowforge" / "prompts").mkdir(parents=True, exist_ok=True)
     (project_root / ".flowforge" / "research").mkdir(parents=True, exist_ok=True)
 
-    console.print(f"✅ Project: [green]{detected.name}[/green]")
+    # Save project context
+    context_path = context.save(project_root)
+
+    console.print(f"\n✅ Project: [green]{detected.name}[/green]")
     console.print(f"✅ Main branch: [green]{detected.main_branch}[/green]")
     console.print(f"✅ CLAUDE.md: [green]{detected.claude_md_path}[/green]")
+    console.print(f"✅ Project context: [green]{context_path}[/green]")
     if detected.build_command:
         console.print(f"✅ Build command: [green]{detected.build_command}[/green]")
 
@@ -242,6 +266,83 @@ def _show_feature_table(features: list[Feature]):
         )
 
     console.print(table)
+
+
+@app.command()
+def edit(
+    feature_id: str = typer.Argument(..., help="Feature ID to edit"),
+    title: Optional[str] = typer.Option(None, "--title", "-t", help="New title"),
+    description: Optional[str] = typer.Option(None, "--desc", "-d", help="New description"),
+    status: Optional[str] = typer.Option(None, "--status", "-s", help="New status"),
+    priority: Optional[int] = typer.Option(None, "--priority", "-p", help="New priority"),
+    complexity: Optional[str] = typer.Option(None, "--complexity", "-c", help="New complexity"),
+    tags: Optional[str] = typer.Option(None, "--tags", help="Comma-separated tags (replaces existing)"),
+):
+    """Edit a feature's attributes."""
+    project_root, config, registry = get_context()
+
+    feature = registry.get_feature(feature_id)
+    if not feature:
+        console.print(f"[red]Feature not found: {feature_id}[/red]")
+        raise typer.Exit(1)
+
+    # Build updates from provided options
+    updates = {}
+    if title is not None:
+        updates["title"] = title
+    if description is not None:
+        updates["description"] = description
+    if status is not None:
+        updates["status"] = status
+    if priority is not None:
+        updates["priority"] = priority
+    if complexity is not None:
+        updates["complexity"] = complexity
+    if tags is not None:
+        updates["tags"] = [t.strip() for t in tags.split(",")]
+
+    if not updates:
+        console.print("[yellow]No updates provided. Use --help to see available options.[/yellow]")
+        raise typer.Exit(1)
+
+    try:
+        updated = registry.update_feature(feature_id, **updates)
+        console.print(f"\n✅ Updated feature: [green]{updated.title}[/green]")
+        console.print(f"   Status: {updated.status.value}")
+        console.print(f"   Priority: {updated.priority}")
+        if updated.tags:
+            console.print(f"   Tags: {', '.join(updated.tags)}")
+    except ValueError as e:
+        console.print(f"[red]Error: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@app.command()
+def delete(
+    feature_id: str = typer.Argument(..., help="Feature ID to delete"),
+    force: bool = typer.Option(False, "--force", "-f", help="Force delete (even if in-progress or has children)"),
+):
+    """Delete a feature from the registry."""
+    project_root, config, registry = get_context()
+
+    feature = registry.get_feature(feature_id)
+    if not feature:
+        console.print(f"[red]Feature not found: {feature_id}[/red]")
+        raise typer.Exit(1)
+
+    # Confirm deletion
+    if not force:
+        if not Confirm.ask(f"Delete feature '{feature.title}'?"):
+            console.print("[yellow]Deletion cancelled.[/yellow]")
+            raise typer.Exit(0)
+
+    try:
+        registry.remove_feature(feature_id, force=force)
+        console.print(f"\n✅ Deleted feature: [green]{feature.title}[/green]")
+    except ValueError as e:
+        console.print(f"[red]Error: {e}[/red]")
+        console.print("[dim]Use --force to override safety checks.[/dim]")
+        raise typer.Exit(1)
 
 
 @app.command()
