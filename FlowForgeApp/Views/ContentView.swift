@@ -40,51 +40,78 @@ struct ContentView: View {
             }
             .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 300)
         } detail: {
-            if appState.isLoading {
-                VStack {
-                    ProgressView()
-                        .scaleEffect(1.5)
-                    Text("Loading features...")
-                        .foregroundColor(.secondary)
-                        .padding(.top)
-                }
-            } else if let error = appState.errorMessage {
-                VStack(spacing: 16) {
-                    Image(systemName: "exclamationmark.triangle")
-                        .font(.system(size: 48))
-                        .foregroundColor(.orange)
-                    Text("Error")
-                        .font(.title)
-                    Text(error)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-                    Button("Dismiss") {
-                        appState.clearError()
+            ZStack(alignment: .bottom) {
+                // Main content
+                Group {
+                    if appState.isLoading {
+                        LoadingFeaturesView(cardCount: 4)
+                            .padding(Spacing.large)
+                    } else if appState.selectedProject != nil {
+                        // Switch between views based on selection
+                        switch selectedView {
+                        case .kanban:
+                            KanbanView()
+                        case .missionControl:
+                            MissionControlV2()
+                        }
+                    } else {
+                        VStack(spacing: 16) {
+                            Image(systemName: "tray")
+                                .font(.system(size: 64))
+                                .foregroundColor(.secondary)
+                            Text("No Project Selected")
+                                .font(.title2)
+                                .foregroundColor(.secondary)
+                            Text("Select a project from the sidebar to view its features")
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if appState.selectedProject != nil {
-                // Switch between views based on selection
-                switch selectedView {
-                case .kanban:
-                    KanbanView()
-                case .missionControl:
-                    MissionControlV2()
+
+                // Toast notifications overlay
+                VStack(spacing: Spacing.small) {
+                    // Milestone celebration banner
+                    if let milestone = appState.showingMilestone {
+                        StreakMilestoneBanner(
+                            milestone: milestone,
+                            onDismiss: {
+                                appState.dismissMilestone()
+                            }
+                        )
+                        .padding(.horizontal, Spacing.large)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+
+                    // Error banner
+                    if let error = appState.errorMessage {
+                        ErrorBanner(
+                            message: error,
+                            onDismiss: {
+                                appState.clearError()
+                            }
+                        )
+                        .padding(.horizontal, Spacing.large)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+
+                    // Success banner
+                    if let success = appState.successMessage {
+                        SuccessBanner(
+                            message: success,
+                            autoDismissAfter: 3.0,
+                            onDismiss: {
+                                appState.clearSuccess()
+                            }
+                        )
+                        .padding(.horizontal, Spacing.large)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
                 }
-            } else {
-                VStack(spacing: 16) {
-                    Image(systemName: "tray")
-                        .font(.system(size: 64))
-                        .foregroundColor(.secondary)
-                    Text("No Project Selected")
-                        .font(.title2)
-                        .foregroundColor(.secondary)
-                    Text("Select a project from the sidebar to view its features")
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.bottom, Spacing.large)
+                .animation(SpringPreset.snappy, value: appState.errorMessage)
+                .animation(SpringPreset.snappy, value: appState.successMessage)
+                .animation(SpringPreset.celebration, value: appState.showingMilestone)
             }
         }
         .sheet(isPresented: $showingAddFeature) {

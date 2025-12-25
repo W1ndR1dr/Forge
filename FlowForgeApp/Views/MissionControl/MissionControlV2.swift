@@ -119,12 +119,35 @@ struct MissionControlV2: View {
             VibeInputWithScope(
                 text: $vibeText,
                 onSubmit: { idea in
-                    submitFeature(idea)
+                    analyzeFeature(idea)
                 },
-                isAnalyzing: isAnalyzing,
+                isAnalyzing: isAnalyzing || appState.isAnalyzingFeature,
                 slotsRemaining: slotsRemaining
             )
+
+            // Show analysis loading state
+            if appState.isAnalyzingFeature {
+                FeatureAnalysisLoading(title: appState.pendingFeatureTitle)
+                    .transition(.scaleAndFade)
+            }
+
+            // Show analysis results (inline preview)
+            if let analysis = appState.pendingAnalysis {
+                FeatureAnalysisPreview(
+                    title: appState.pendingFeatureTitle,
+                    analysis: analysis,
+                    onConfirm: {
+                        confirmFeature()
+                    },
+                    onCancel: {
+                        cancelAnalysis()
+                    }
+                )
+                .transition(.scaleAndFade)
+            }
         }
+        .animation(SpringPreset.smooth, value: appState.pendingAnalysis != nil)
+        .animation(SpringPreset.smooth, value: appState.isAnalyzingFeature)
     }
 
     // MARK: - Today's Mission Section
@@ -302,6 +325,28 @@ struct MissionControlV2: View {
 
     // MARK: - Actions
 
+    /// Step 1: Analyze the feature (show AI insights before adding)
+    private func analyzeFeature(_ idea: String) {
+        vibeText = ""  // Clear input immediately for responsiveness
+
+        Task {
+            await appState.analyzeFeature(title: idea)
+        }
+    }
+
+    /// Step 2: User confirmed - add the feature
+    private func confirmFeature() {
+        Task {
+            await appState.confirmAnalyzedFeature()
+        }
+    }
+
+    /// User cancelled - clear analysis
+    private func cancelAnalysis() {
+        appState.clearPendingAnalysis()
+    }
+
+    /// Legacy direct submit (bypasses analysis - kept for compatibility)
     private func submitFeature(_ idea: String) {
         isAnalyzing = true
 
@@ -485,6 +530,7 @@ struct StartMissionCardV2: View {
 struct UpNextCardV2: View {
     let feature: Feature
     let position: Int
+    var isSafeToParallelize: Bool = true  // Default to safe for vibecoders
 
     @State private var isHovered = false
 
@@ -498,9 +544,16 @@ struct UpNextCardV2: View {
                 .frame(width: 20)
 
             VStack(alignment: .leading, spacing: Spacing.micro) {
-                Text(feature.title)
-                    .font(Typography.body)
-                    .lineLimit(1)
+                HStack(spacing: Spacing.small) {
+                    Text(feature.title)
+                        .font(Typography.body)
+                        .lineLimit(1)
+
+                    // Safe to parallelize badge
+                    if isSafeToParallelize {
+                        ParallelSafeBadge()
+                    }
+                }
 
                 if !feature.tags.isEmpty {
                     Text(feature.tags.joined(separator: " · "))
@@ -531,6 +584,29 @@ struct UpNextCardV2: View {
         case .large: return ComplexityColor.large
         case .epic: return ComplexityColor.epic
         }
+    }
+}
+
+// MARK: - Parallel Safe Badge
+// Shows when a feature can be worked on alongside others
+
+struct ParallelSafeBadge: View {
+    @State private var isHovered = false
+
+    var body: some View {
+        HStack(spacing: 2) {
+            Image(systemName: "arrow.triangle.branch")
+                .font(.system(size: 8))
+            Text("parallel ok")
+                .font(.system(size: 9, weight: .medium))
+        }
+        .foregroundColor(Accent.success)
+        .padding(.horizontal, 4)
+        .padding(.vertical, 2)
+        .background(Accent.success.opacity(0.15))
+        .cornerRadius(4)
+        .help("Safe to work on this while other features are in progress")
+        .onHover { isHovered = $0 }
     }
 }
 

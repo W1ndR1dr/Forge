@@ -14,29 +14,29 @@ enum PlatformConfig {
     static let tailscaleHostname = "airfit-server.tail22bf1e.ts.net"
     static let serverPort = 8081
 
-    /// Default server URL string
+    /// Default server URL string (fallback)
     static var defaultServerURL: String {
         #if os(macOS)
         return "http://localhost:\(serverPort)"
         #else
-        if let stored = UserDefaults.standard.string(forKey: "serverURL") {
-            return stored
-        }
         // Default to Tailscale for iOS (works on any network)
         return "http://\(tailscaleHostname):\(serverPort)"
         #endif
     }
 
-    /// Server URL (configurable on iOS, fixed on macOS for now)
-    static var serverURL: URL {
-        return URL(string: defaultServerURL)!
+    /// Current server URL (may be overridden by user)
+    static var currentServerURL: String {
+        UserDefaults.standard.string(forKey: "serverURL") ?? defaultServerURL
     }
 
-    /// Save custom server URL (iOS only)
+    /// Server URL (configurable)
+    static var serverURL: URL {
+        return URL(string: currentServerURL)!
+    }
+
+    /// Save custom server URL
     static func setServerURL(_ urlString: String) {
-        #if os(iOS)
         UserDefaults.standard.set(urlString, forKey: "serverURL")
-        #endif
     }
 }
 

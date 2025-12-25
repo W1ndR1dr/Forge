@@ -127,10 +127,14 @@ struct VibeInput: View {
 
 // MARK: - Scope Creep Indicator
 // Shows as-you-type feedback about feature complexity
+// Uses /api/quick-scope for smarter detection with local fallback
 
 struct ScopeCreepIndicator: View {
     let text: String
     @State private var analysis: ScopeAnalysis?
+    @State private var debounceTask: Task<Void, Never>?
+
+    private let apiClient = APIClient()
 
     var body: some View {
         Group {
@@ -152,38 +156,87 @@ struct ScopeCreepIndicator: View {
         }
         .animation(SpringPreset.smooth, value: analysis?.hasWarning)
         .onChange(of: text) { _, newValue in
-            analyzeText(newValue)
+            analyzeTextDebounced(newValue)
         }
     }
 
-    private func analyzeText(_ text: String) {
-        // Quick local analysis for immediate feedback
-        // Full analysis happens server-side on submit
+    /// Debounce analysis to avoid API spam
+    private func analyzeTextDebounced(_ text: String) {
+        // Cancel previous pending analysis
+        debounceTask?.cancel()
+
+        // Immediate local check for obvious issues
+        if let localAnalysis = quickLocalCheck(text) {
+            analysis = localAnalysis
+            return
+        }
+
+        // Clear analysis for short text
+        guard text.count >= 10 else {
+            analysis = nil
+            return
+        }
+
+        // Debounce API call (300ms)
+        debounceTask = Task {
+            try? await Task.sleep(nanoseconds: 300_000_000)
+
+            guard !Task.isCancelled else { return }
+
+            await analyzeTextRemote(text)
+        }
+    }
+
+    /// Quick local check for immediate feedback
+    private func quickLocalCheck(_ text: String) -> ScopeAnalysis? {
         let lowered = text.lowercased()
 
         if text.count > 100 {
-            analysis = ScopeAnalysis(
+            return ScopeAnalysis(
                 hasWarning: true,
                 message: "This might be too big for one feature. Consider breaking it down.",
                 icon: "exclamationmark.triangle",
                 color: Accent.warning
             )
         } else if lowered.contains(" and also ") || lowered.contains(" plus ") {
-            analysis = ScopeAnalysis(
+            return ScopeAnalysis(
                 hasWarning: true,
                 message: "Scope creep detected. Focus on one thing.",
                 icon: "arrow.left.arrow.right",
                 color: Accent.warning
             )
         } else if lowered.contains(" additionally ") || lowered.contains(" as well as ") {
-            analysis = ScopeAnalysis(
+            return ScopeAnalysis(
                 hasWarning: true,
                 message: "Multiple features detected. Pick the most important one.",
                 icon: "arrow.triangle.branch",
                 color: Accent.warning
             )
-        } else {
-            analysis = nil
+        }
+
+        return nil
+    }
+
+    /// Call quick-scope API for smarter analysis
+    private func analyzeTextRemote(_ text: String) async {
+        do {
+            let response = try await apiClient.quickScopeCheck(text: text)
+
+            await MainActor.run {
+                if response.hasWarnings, let firstWarning = response.warnings.first {
+                    analysis = ScopeAnalysis(
+                        hasWarning: true,
+                        message: firstWarning,
+                        icon: "exclamationmark.triangle",
+                        color: Accent.warning
+                    )
+                } else {
+                    analysis = nil
+                }
+            }
+        } catch {
+            // Silent fail - local analysis is good enough
+            print("Quick scope check unavailable: \(error)")
         }
     }
 }

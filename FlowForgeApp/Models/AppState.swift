@@ -9,6 +9,7 @@ class AppState {
     var features: [Feature] = []
     var isLoading = false
     var errorMessage: String?
+    var successMessage: String?  // For toast notifications
     var isConnectedToServer = false
     var connectionError: String?
 
@@ -16,8 +17,14 @@ class AppState {
     var parsedProposals: [Proposal] = []
     var showingProposalReview = false
 
+    // Feature analysis state (Wave 2)
+    var pendingAnalysis: FeatureAnalysis?
+    var pendingFeatureTitle: String = ""
+    var isAnalyzingFeature = false
+
     // Shipping stats (Wave 4.4)
     var shippingStats: ShippingStats = ShippingStats()
+    var showingMilestone: Int? = nil  // Track which milestone to show (7, 14, 30, etc.)
 
     #if os(macOS)
     private let cliBridge = CLIBridge()
@@ -347,6 +354,68 @@ class AppState {
         }
     }
 
+    // MARK: - Feature Analysis (Wave 2)
+
+    /// Analyze a feature before adding (shows complexity, scope warnings, expert suggestions)
+    func analyzeFeature(title: String, description: String? = nil) async {
+        guard let project = selectedProject else { return }
+
+        isAnalyzingFeature = true
+        pendingFeatureTitle = title
+        pendingAnalysis = nil
+
+        do {
+            let analysis = try await apiClient.analyzeFeature(
+                project: project.name,
+                title: title,
+                description: description
+            )
+            self.pendingAnalysis = analysis
+        } catch {
+            // If analysis fails, we can still add the feature
+            // Just log and continue - don't block the user
+            print("Feature analysis unavailable: \(error)")
+            // Create a minimal fallback analysis
+            self.pendingAnalysis = FeatureAnalysis(
+                complexity: "medium",
+                estimatedHours: nil,
+                confidence: nil,
+                foundationScore: nil,
+                expertDomain: nil,
+                scopeCreepWarnings: nil,
+                suggestedBreakdown: nil,
+                filesAffected: nil,
+                shippableToday: nil
+            )
+        }
+
+        isAnalyzingFeature = false
+    }
+
+    /// Clear pending analysis (user cancelled)
+    func clearPendingAnalysis() {
+        pendingAnalysis = nil
+        pendingFeatureTitle = ""
+        isAnalyzingFeature = false
+    }
+
+    /// Confirm and add the pending analyzed feature
+    func confirmAnalyzedFeature() async {
+        guard !pendingFeatureTitle.isEmpty else { return }
+
+        let title = pendingFeatureTitle
+
+        await addFeature(title: title)
+        await loadFeatures()
+
+        // Clear the pending state
+        pendingAnalysis = nil
+        pendingFeatureTitle = ""
+
+        // Show success toast
+        showSuccess("Feature added to queue!")
+    }
+
     func startFeature(_ feature: Feature) async {
         guard let project = selectedProject else { return }
 
@@ -494,6 +563,15 @@ class AppState {
         errorMessage = nil
     }
 
+    func clearSuccess() {
+        successMessage = nil
+    }
+
+    /// Show a success toast (auto-dismisses)
+    func showSuccess(_ message: String) {
+        successMessage = message
+    }
+
     // MARK: - Shipping Machine Constraints
 
     /// Maximum planned features allowed (Wave 4 constraint)
@@ -520,11 +598,30 @@ class AppState {
         guard let project = selectedProject else { return }
 
         do {
+            let oldStreak = shippingStats.currentStreak
             let stats = try await apiClient.getShippingStats(project: project.name)
             self.shippingStats = stats
+
+            // Check for milestone (only if streak increased)
+            if stats.currentStreak > oldStreak {
+                checkForMilestone(newStreak: stats.currentStreak)
+            }
         } catch {
             // Silent fail - stats are optional
             print("Failed to load shipping stats: \(error)")
         }
+    }
+
+    /// Check if we hit a milestone and show celebration
+    private func checkForMilestone(newStreak: Int) {
+        let milestones = [7, 14, 30, 50, 100]
+        if milestones.contains(newStreak) {
+            showingMilestone = newStreak
+        }
+    }
+
+    /// Dismiss the milestone banner
+    func dismissMilestone() {
+        showingMilestone = nil
     }
 }

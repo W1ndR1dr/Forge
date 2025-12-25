@@ -20,6 +20,14 @@ struct FlowForgeApp: App {
                 }
         }
         .commands {
+            // Help menu
+            CommandGroup(replacing: .help) {
+                Button("FlowForge Help") {
+                    if let url = URL(string: "https://github.com/W1ndR1dr/FlowForge") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+            }
             // File menu - New Feature
             CommandGroup(replacing: .newItem) {
                 Button("New Feature") {
@@ -71,6 +79,12 @@ struct FlowForgeApp: App {
                 .keyboardShortcut("5", modifiers: .command)
                 .disabled(appState.selectedProject == nil)
             }
+        }
+
+        // Settings window (⌘,)
+        Settings {
+            SettingsView()
+                .environment(appState)
         }
     }
 }
