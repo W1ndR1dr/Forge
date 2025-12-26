@@ -810,8 +810,9 @@ class AppState {
 
     // MARK: - Shipping Machine Constraints
 
-    /// Maximum planned features allowed (Wave 4 constraint)
-    static let maxPlannedFeatures = 3
+    /// Maximum planned features allowed (effectively unlimited - ideas are cheap!)
+    /// The discipline comes at START, not CAPTURE
+    static let maxPlannedFeatures = 99
 
     /// Number of currently planned features
     var plannedCount: Int {

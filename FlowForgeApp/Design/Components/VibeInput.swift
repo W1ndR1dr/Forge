@@ -99,22 +99,7 @@ struct VibeInput: View {
             .animation(SpringPreset.snappy, value: isFocused)
             .onHover { isHovered = $0 }
 
-            // Slots indicator
-            if slotsRemaining < 3 {
-                HStack(spacing: Spacing.micro) {
-                    ForEach(0..<3) { index in
-                        Circle()
-                            .fill(index < (3 - slotsRemaining) ? StatusColor.inProgressFallback : Color.secondary.opacity(0.3))
-                            .frame(width: 6, height: 6)
-                    }
-
-                    Text(slotsRemaining == 0 ? "Slots full — ship something first" : "\(slotsRemaining) slot\(slotsRemaining == 1 ? "" : "s") remaining")
-                        .font(Typography.caption)
-                        .foregroundColor(slotsRemaining == 0 ? Accent.warning : .secondary)
-                }
-                .padding(.leading, Spacing.small)
-                .transition(.opacity.combined(with: .move(edge: .top)))
-            }
+            // Ideas are unlimited - discipline comes at START, not CAPTURE
         }
     }
 
