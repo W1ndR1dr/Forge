@@ -134,7 +134,6 @@ async def lifespan(app: FastAPI):
         remote_executor = RemoteExecutor(
             host=config["remote_host"],
             user=config["remote_user"],
-            projects_base=config["projects_base"],
         )
         sync_manager = SyncManager(remote_executor, cache_manager)
 
