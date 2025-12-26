@@ -10,8 +10,8 @@ enum PlatformConfig {
     static let isIOS = true
     #endif
 
-    /// Tailscale hostname for the server (auto-configured for private use)
-    static let tailscaleHostname = "airfit-server.tail22bf1e.ts.net"
+    /// Tailscale hostname for the server (your Raspberry Pi)
+    static let tailscaleHostname = "raspberrypi"
     static let serverPort = 8081
 
     /// Default server URL string (fallback)

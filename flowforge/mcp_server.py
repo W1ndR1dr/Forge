@@ -26,6 +26,7 @@ from .worktree import WorktreeManager
 from .merge import MergeOrchestrator
 from .prompt_builder import PromptBuilder
 from .intelligence import IntelligenceEngine
+from .remote import RemoteExecutor
 
 
 @dataclass
@@ -63,6 +64,14 @@ class FlowForgeMCPServer:
         self.projects_base = Path(projects_base)
         self.remote_host = remote_host
         self.remote_user = remote_user
+
+        # Set up remote executor if running on Pi
+        if remote_host and remote_user:
+            self.remote_executor = RemoteExecutor(remote_host, remote_user)
+            self.is_remote = True
+        else:
+            self.remote_executor = None
+            self.is_remote = False
 
         # Cache project configs
         self._project_cache: dict[str, tuple[FlowForgeConfig, FeatureRegistry]] = {}
@@ -301,18 +310,28 @@ class FlowForgeMCPServer:
         """List all FlowForge-initialized projects."""
         projects = []
 
-        for item in self.projects_base.iterdir():
-            if item.is_dir() and (item / ".flowforge").exists():
-                try:
-                    config = FlowForgeConfig.load(item)
-                    projects.append({
-                        "name": config.project.name,
-                        "path": str(item),
-                        "main_branch": config.project.main_branch,
-                    })
-                except Exception:
-                    # Skip projects we can't load
-                    pass
+        if self.is_remote:
+            # Use SSH to get projects from Mac
+            remote_projects = self.remote_executor.get_projects(self.projects_base)
+            for p in remote_projects:
+                projects.append({
+                    "name": p["name"],
+                    "path": p["path"],
+                })
+        else:
+            # Local mode - access filesystem directly
+            for item in self.projects_base.iterdir():
+                if item.is_dir() and (item / ".flowforge").exists():
+                    try:
+                        config = FlowForgeConfig.load(item)
+                        projects.append({
+                            "name": config.project.name,
+                            "path": str(item),
+                            "main_branch": config.project.main_branch,
+                        })
+                    except Exception:
+                        # Skip projects we can't load
+                        pass
 
         return MCPToolResult(
             success=True,
