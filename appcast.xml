@@ -7,22 +7,24 @@
         <language>en</language>
 
         <item>
-            <title>FlowForge 1.0.1</title>
+            <title>FlowForge 1.1.0</title>
             <description><![CDATA[
-                <h2>What's New in 1.0.1</h2>
+                <h2>What's New in 1.1.0</h2>
                 <ul>
-                    <li>fix(scripts): Fix macOS release script version parsing</li>
-                    <li>Release v for macOS (Sparkle)</li>
+                    <li>Offline-first architecture: iOS app works when Mac is sleeping</li>
+                    <li>Pi caches your projects - view features anytime</li>
+                    <li>Automatic sync when Mac comes back online</li>
+                    <li>Clear "Offline Mode" indicator shows connection status</li>
                 </ul>
             ]]></description>
-            <pubDate>Fri, 26 Dec 2025 09:01:24 -0800</pubDate>
+            <pubDate>Fri, 26 Dec 2025 11:07:04 -0800</pubDate>
             <sparkle:version>1</sparkle:version>
-            <sparkle:shortVersionString>1.0.1</sparkle:shortVersionString>
+            <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <enclosure
-                url="https://github.com/W1ndR1dr/FlowForge/releases/download/v1.0.1/FlowForge-1.0.1.zip"
-                sparkle:edSignature="sparkle:edSignature="ZY32foaxjDKUK32JNSbOafTV0xc+iHdWqoTgjZpCRtQEfLpDg9c7+fcNWxk2IrmBoVivk/i/K3G3dG1iBdnaBg==" length="2375742""
-                length="2375742"
+                url="https://github.com/W1ndR1dr/FlowForge/releases/download/v1.1.0/FlowForge-1.1.0.zip"
+                sparkle:edSignature="XP5Pposa0YAdTvq8VD3QisQisCskes2gPvy7hfftzIBgRWykO/O4VaeBFyYs9/pKzBp2U4/vl7t70EsUDIzoCg==" length="2388143"
+                length="2388143"
                 type="application/octet-stream"/>
         </item>
 
