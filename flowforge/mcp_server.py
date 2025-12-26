@@ -81,11 +81,22 @@ class FlowForgeMCPServer:
     ) -> tuple[Path, FlowForgeConfig, FeatureRegistry]:
         """Get or load project context."""
         project_path = self.projects_base / project_name
+        flowforge_dir = project_path / ".flowforge"
 
+        if self.is_remote:
+            # Check project exists via SSH
+            if not self.remote_executor.dir_exists(project_path):
+                raise ValueError(f"Project not found: {project_name}")
+            if not self.remote_executor.dir_exists(flowforge_dir):
+                raise ValueError(f"Project not initialized: {project_name}")
+
+            # Load config and registry via SSH
+            return self._get_remote_project_context(project_name, project_path, flowforge_dir)
+
+        # Local mode
         if not project_path.exists():
             raise ValueError(f"Project not found: {project_name}")
 
-        flowforge_dir = project_path / ".flowforge"
         if not flowforge_dir.exists():
             raise ValueError(f"FlowForge not initialized in: {project_name}")
 
@@ -109,6 +120,66 @@ class FlowForgeMCPServer:
         cache_key = str(project_path)
         if cache_key in self._project_cache:
             del self._project_cache[cache_key]
+
+    def _get_remote_project_context(
+        self,
+        project_name: str,
+        project_path: Path,
+        flowforge_dir: Path,
+    ) -> tuple[Path, FlowForgeConfig, FeatureRegistry]:
+        """
+        Load project context via SSH from remote Mac.
+
+        Reads config.json and registry.json via SSH and constructs
+        the config and registry objects from the JSON data.
+        """
+        from .config import ProjectConfig
+
+        # Read config.json via SSH
+        config_path = flowforge_dir / "config.json"
+        config_content = self.remote_executor.read_file(config_path)
+        if not config_content:
+            raise ValueError(f"Could not read config for: {project_name}")
+
+        config_data = json.loads(config_content)
+        project_data = config_data.get("project", {})
+        project_config = ProjectConfig(**project_data)
+        config = FlowForgeConfig(
+            project=project_config,
+            version=config_data.get("version", "1.0.0"),
+        )
+
+        # Read registry.json via SSH
+        registry_path = flowforge_dir / "registry.json"
+        registry_content = self.remote_executor.read_file(registry_path)
+
+        # Create a registry object and populate it from JSON
+        # We create a "virtual" registry that operates on cached data
+        registry = FeatureRegistry(project_path)
+
+        if registry_content:
+            registry_data = json.loads(registry_content)
+
+            # Populate features
+            from .registry import Feature, MergeQueueItem, ShippingStats
+            for fid, fdata in registry_data.get("features", {}).items():
+                registry._features[fid] = Feature.from_dict(fdata)
+
+            # Populate merge queue
+            for item in registry_data.get("merge_queue", []):
+                registry._merge_queue.append(MergeQueueItem(**item))
+
+            # Populate shipping stats
+            if "shipping_stats" in registry_data:
+                registry._shipping_stats = ShippingStats.from_dict(
+                    registry_data["shipping_stats"]
+                )
+
+        # Cache the loaded data
+        cache_key = str(project_path)
+        self._project_cache[cache_key] = (config, registry)
+
+        return project_path, config, registry
 
     # =========================================================================
     # MCP Tools

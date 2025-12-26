@@ -219,6 +219,31 @@ class RemoteExecutor:
 
         return projects
 
+    def read_file(self, file_path: Path) -> Optional[str]:
+        """
+        Read a file from the remote Mac.
+
+        Args:
+            file_path: Path to file on remote Mac
+
+        Returns:
+            File contents or None if read fails
+        """
+        result = self.run_command(["cat", str(file_path)], timeout=10)
+        if result.success:
+            return result.stdout
+        return None
+
+    def file_exists(self, file_path: Path) -> bool:
+        """Check if a file exists on the remote Mac."""
+        result = self.run_command(["test", "-f", str(file_path)], timeout=5)
+        return result.success
+
+    def dir_exists(self, dir_path: Path) -> bool:
+        """Check if a directory exists on the remote Mac."""
+        result = self.run_command(["test", "-d", str(dir_path)], timeout=5)
+        return result.success
+
 
 class LocalOrRemoteExecutor:
     """
