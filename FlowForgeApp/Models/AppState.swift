@@ -1,5 +1,8 @@
 import Foundation
 import Observation
+#if os(iOS)
+import UIKit
+#endif
 
 @MainActor
 @Observable
@@ -502,10 +505,30 @@ class AppState {
 
         do {
             #if os(iOS)
-            try await apiClient.startFeature(project: project.name, featureId: feature.id)
+            // iOS: Just start the feature - user will copy prompt to Claude web
+            let response = try await apiClient.startFeature(project: project.name, featureId: feature.id)
+            if let prompt = response.prompt {
+                // Copy prompt to clipboard for easy paste into Claude web
+                UIPasteboard.general.string = prompt
+                showSuccess("Ready to build! Prompt copied to clipboard.")
+            }
             #else
             if useAPIMode {
-                try await apiClient.startFeature(project: project.name, featureId: feature.id)
+                // macOS API mode: Start feature AND launch Warp terminal
+                let response = try await apiClient.startFeature(project: project.name, featureId: feature.id)
+
+                // Launch Claude Code in Warp terminal
+                let launchResult = await TerminalLauncher.launchClaudeCode(
+                    worktreePath: response.worktreePath,
+                    prompt: response.prompt
+                )
+
+                if launchResult.success {
+                    showSuccess("Opening Claude Code...")
+                } else {
+                    // Still successful - worktree created, just manual terminal launch needed
+                    showSuccess("Worktree ready! Prompt copied to clipboard.")
+                }
             } else {
                 try await cliBridge.startFeature(featureId: feature.id, projectPath: project.path)
             }

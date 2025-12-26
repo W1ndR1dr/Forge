@@ -72,9 +72,10 @@ actor APIClient {
     }
 
     /// Start a feature (creates worktree, generates prompt)
-    func startFeature(project: String, featureId: String) async throws {
+    /// Returns the worktree path and prompt for launching Claude Code
+    func startFeature(project: String, featureId: String) async throws -> StartFeatureResponse {
         let url = baseURL.appendingPathComponent("api/\(project)/features/\(featureId)/start")
-        let _: EmptyResponse = try await post(url: url, body: [:])
+        return try await post(url: url, body: [:])
     }
 
     /// Stop a feature (cleans up worktree)
@@ -299,6 +300,23 @@ private struct FeatureListResponse: Decodable {
 
 private struct FeatureAddResponse: Decodable {
     let feature_id: String
+}
+
+/// Response from starting a feature - contains worktree path and prompt for launching Claude Code
+struct StartFeatureResponse: Decodable {
+    let featureId: String
+    let worktreePath: String
+    let promptPath: String?
+    let prompt: String?
+    let launchCommand: String?
+
+    enum CodingKeys: String, CodingKey {
+        case featureId = "feature_id"
+        case worktreePath = "worktree_path"
+        case promptPath = "prompt_path"
+        case prompt
+        case launchCommand = "launch_command"
+    }
 }
 
 // MARK: - Merge Response Types
