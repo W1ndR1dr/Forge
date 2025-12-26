@@ -31,6 +31,7 @@ from .expert_router import ExpertRouter, ExpertDomain as RouterDomain
 from .cache import CacheManager, get_cache_manager
 from .sync import SyncManager, get_sync_manager
 from .remote import RemoteExecutor
+from .worktree import WorktreeManager
 
 
 # =============================================================================
@@ -928,6 +929,49 @@ async def delete_feature(
     await ws_manager.broadcast_feature_update(project, feature_id, "deleted")
 
     return {"success": True, "message": f"Feature {feature_id} deleted"}
+
+
+# =============================================================================
+# Git Status Endpoint
+# =============================================================================
+
+
+@app.get("/api/{project}/features/{feature_id}/git-status")
+async def get_git_status(project: str, feature_id: str):
+    """
+    Get git status for a feature's worktree.
+
+    Returns:
+    - exists: whether the worktree exists
+    - has_changes: whether there are uncommitted changes
+    - changes: list of changed files
+    - ahead_of_main: commits ahead of main
+    - behind_main: commits behind main
+    """
+    config = get_config()
+    project_path = config["projects_base"] / project
+
+    if not (project_path / ".flowforge").exists():
+        raise HTTPException(status_code=404, detail=f"Project not found: {project}")
+
+    registry = FeatureRegistry.load(project_path)
+    feature = registry.get_feature(feature_id)
+
+    if not feature:
+        raise HTTPException(status_code=404, detail=f"Feature not found: {feature_id}")
+
+    # Get worktree status
+    worktree_manager = WorktreeManager(project_path)
+    status = worktree_manager.get_worktree_status(feature_id)
+
+    return {
+        "exists": status.exists,
+        "has_changes": status.has_changes,
+        "changes": status.changes,
+        "commit_count": status.commit_count,
+        "ahead_of_main": status.ahead_of_main,
+        "behind_main": status.behind_main,
+    }
 
 
 # =============================================================================

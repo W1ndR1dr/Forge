@@ -104,6 +104,12 @@ actor APIClient {
         return response.prompt
     }
 
+    /// Get git status for a feature's worktree
+    func getGitStatus(project: String, featureId: String) async throws -> GitStatus {
+        let url = baseURL.appendingPathComponent("api/\(project)/features/\(featureId)/git-status")
+        return try await get(url: url)
+    }
+
     // MARK: - Brainstorm / Proposals
 
     /// Parse Claude brainstorm output into proposals
@@ -347,6 +353,43 @@ struct StartFeatureResponse: Decodable {
         case promptPath = "prompt_path"
         case prompt
         case launchCommand = "launch_command"
+    }
+}
+
+/// Git status for a feature's worktree
+struct GitStatus: Decodable {
+    let exists: Bool
+    let hasChanges: Bool
+    let changes: [String]
+    let commitCount: Int
+    let aheadOfMain: Int
+    let behindMain: Int
+
+    enum CodingKeys: String, CodingKey {
+        case exists
+        case hasChanges = "has_changes"
+        case changes
+        case commitCount = "commit_count"
+        case aheadOfMain = "ahead_of_main"
+        case behindMain = "behind_main"
+    }
+
+    /// Summary text for display
+    var summary: String? {
+        guard exists else { return nil }
+
+        var parts: [String] = []
+        if hasChanges {
+            parts.append("\(changes.count) uncommitted")
+        }
+        if aheadOfMain > 0 {
+            parts.append("\(aheadOfMain) ahead")
+        }
+        if behindMain > 0 {
+            parts.append("\(behindMain) behind")
+        }
+
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 }
 

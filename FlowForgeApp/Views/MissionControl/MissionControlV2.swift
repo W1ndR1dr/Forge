@@ -419,12 +419,17 @@ struct MissionControlV2: View {
 // MARK: - Active Mission Card V2
 
 struct ActiveMissionCardV2: View {
+    @Environment(AppState.self) private var appState
     let feature: Feature
     let onShip: () -> Void
 
     @State private var isHovered = false
     @State private var isVisible = false
     @State private var isLaunchingTerminal = false
+    @State private var gitStatus: GitStatus?
+    @State private var isLoadingGitStatus = false
+
+    private let apiClient = APIClient()
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.standard) {
@@ -483,6 +488,59 @@ struct ActiveMissionCardV2: View {
                         #endif
                     }
 
+                    // Git status badges
+                    if let status = gitStatus {
+                        HStack(spacing: Spacing.small) {
+                            if status.hasChanges {
+                                GitStatusBadge(
+                                    icon: "pencil.circle.fill",
+                                    text: "\(status.changes.count) uncommitted",
+                                    color: Accent.warning
+                                )
+                            }
+                            if status.aheadOfMain > 0 {
+                                GitStatusBadge(
+                                    icon: "arrow.up.circle.fill",
+                                    text: "\(status.aheadOfMain) ahead",
+                                    color: Accent.success
+                                )
+                            }
+                            if status.behindMain > 0 {
+                                GitStatusBadge(
+                                    icon: "arrow.down.circle.fill",
+                                    text: "\(status.behindMain) behind",
+                                    color: Accent.warning
+                                )
+                            }
+                            if !status.hasChanges && status.aheadOfMain == 0 && status.behindMain == 0 {
+                                GitStatusBadge(
+                                    icon: "checkmark.circle.fill",
+                                    text: "Clean",
+                                    color: .secondary
+                                )
+                            }
+
+                            Spacer()
+
+                            // Refresh button
+                            Button(action: { Task { await loadGitStatus() } }) {
+                                Image(systemName: isLoadingGitStatus ? "arrow.triangle.2.circlepath" : "arrow.clockwise")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(isLoadingGitStatus)
+                        }
+                    } else if isLoadingGitStatus {
+                        HStack {
+                            ProgressView()
+                                .scaleEffect(0.6)
+                            Text("Loading git status...")
+                                .font(Typography.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
                     // Open in Terminal button
                     #if os(macOS)
                     Button(action: { Task { await openInTerminal(worktreePath) } }) {
@@ -503,6 +561,9 @@ struct ActiveMissionCardV2: View {
                 .padding(Spacing.small)
                 .background(Surface.highlighted)
                 .cornerRadius(CornerRadius.medium)
+                .onAppear {
+                    Task { await loadGitStatus() }
+                }
             }
 
             // SHIP IT button (Julie Zhuo - obvious next action)
@@ -562,15 +623,63 @@ struct ActiveMissionCardV2: View {
         NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: path)
     }
     #endif
+
+    /// Load git status for this feature's worktree
+    @MainActor
+    private func loadGitStatus() async {
+        guard let project = appState.selectedProject else { return }
+
+        isLoadingGitStatus = true
+        defer { isLoadingGitStatus = false }
+
+        do {
+            gitStatus = try await apiClient.getGitStatus(
+                project: project.name,
+                featureId: feature.id
+            )
+        } catch {
+            // Silently fail - git status is optional info
+            print("Failed to load git status: \(error)")
+        }
+    }
+}
+
+// MARK: - Git Status Badge
+
+struct GitStatusBadge: View {
+    let icon: String
+    let text: String
+    let color: Color
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 10))
+            Text(text)
+                .font(.system(size: 10, weight: .medium))
+        }
+        .foregroundColor(color)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+        .background(color.opacity(0.15))
+        .cornerRadius(4)
+    }
 }
 
 // MARK: - Start Mission Card V2
 
 struct StartMissionCardV2: View {
+    @Environment(AppState.self) private var appState
     let feature: Feature
     let onStart: () -> Void
 
     @State private var isHovered = false
+    @State private var showingPromptPreview = false
+    @State private var isLoadingPrompt = false
+    @State private var promptText: String?
+    @State private var promptError: String?
+
+    private let apiClient = APIClient()
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.standard) {
@@ -590,6 +699,18 @@ struct StartMissionCardV2: View {
                     }
                 }
             }
+
+            // Preview prompt button (secondary action)
+            Button(action: { Task { await loadPromptPreview() } }) {
+                HStack {
+                    Image(systemName: "doc.text.magnifyingglass")
+                    Text(isLoadingPrompt ? "Loading..." : "Preview Prompt")
+                }
+                .font(Typography.caption)
+                .foregroundColor(.secondary)
+            }
+            .buttonStyle(.plain)
+            .disabled(isLoadingPrompt)
 
             Button(action: onStart) {
                 HStack {
@@ -615,7 +736,121 @@ struct StartMissionCardV2: View {
         )
         .hoverable(isHovered: isHovered)
         .onHover { isHovered = $0 }
+        .sheet(isPresented: $showingPromptPreview) {
+            PromptPreviewSheet(
+                featureTitle: feature.title,
+                prompt: promptText ?? "Failed to load prompt",
+                error: promptError,
+                onDismiss: { showingPromptPreview = false }
+            )
+        }
     }
+
+    @MainActor
+    private func loadPromptPreview() async {
+        guard let project = appState.selectedProject else { return }
+
+        isLoadingPrompt = true
+        promptError = nil
+
+        do {
+            promptText = try await apiClient.getPrompt(
+                project: project.name,
+                featureId: feature.id
+            )
+            showingPromptPreview = true
+        } catch {
+            promptError = error.localizedDescription
+            showingPromptPreview = true
+        }
+
+        isLoadingPrompt = false
+    }
+}
+
+// MARK: - Prompt Preview Sheet
+
+struct PromptPreviewSheet: View {
+    let featureTitle: String
+    let prompt: String
+    let error: String?
+    let onDismiss: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                VStack(alignment: .leading, spacing: Spacing.micro) {
+                    Text("Prompt Preview")
+                        .font(Typography.sectionHeader)
+                    Text(featureTitle)
+                        .font(Typography.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                Button("Done") {
+                    onDismiss()
+                }
+                .keyboardShortcut(.cancelAction)
+            }
+            .padding()
+
+            Divider()
+
+            // Content
+            if let error = error {
+                VStack(spacing: Spacing.medium) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 40))
+                        .foregroundColor(Accent.danger)
+                    Text("Failed to load prompt")
+                        .font(Typography.body)
+                    Text(error)
+                        .font(Typography.caption)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding()
+            } else {
+                ScrollView {
+                    Text(prompt)
+                        .font(.system(size: 12, design: .monospaced))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                }
+            }
+
+            Divider()
+
+            // Footer
+            HStack {
+                Text("This is the prompt Claude Code will receive")
+                    .font(Typography.caption)
+                    .foregroundColor(.secondary)
+
+                Spacer()
+
+                #if os(macOS)
+                Button(action: copyToClipboard) {
+                    Label("Copy", systemImage: "doc.on.doc")
+                }
+                .buttonStyle(.bordered)
+                #endif
+            }
+            .padding()
+        }
+        .frame(width: 600, height: 500)
+    }
+
+    #if os(macOS)
+    private func copyToClipboard() {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(prompt, forType: .string)
+    }
+    #endif
 }
 
 // MARK: - Up Next Card V2
