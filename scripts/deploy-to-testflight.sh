@@ -462,3 +462,12 @@ echo "  1. Wait ~5-15 minutes for processing"
 echo "  2. Check App Store Connect for status"
 echo ""
 echo "App Store Connect: https://appstoreconnect.apple.com"
+
+# Check if macOS companion also needs deployment
+source "$PROJECT_DIR/scripts/check-deploy-scope.sh" 2>/dev/null || true
+COMPANION=$(check_companion_deploy "ios" 2>/dev/null || echo "")
+if [ "$COMPANION" = "macos" ]; then
+    echo ""
+    echo -e "${YELLOW}💻 Shared code changed - macOS app may need update too${NC}"
+    echo "   Run: ./scripts/release-macos.sh --auto"
+fi

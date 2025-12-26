@@ -275,3 +275,12 @@ echo -e "Archive: $ZIP_PATH"
 echo ""
 echo "Sparkle will auto-update existing users!"
 echo "GitHub: https://github.com/W1ndR1dr/FlowForge/releases/tag/v$VERSION"
+
+# Check if iOS companion also needs deployment
+source "$FLOWFORGE_DIR/scripts/check-deploy-scope.sh" 2>/dev/null || true
+COMPANION=$(check_companion_deploy "macos" 2>/dev/null || echo "")
+if [ "$COMPANION" = "ios" ]; then
+    echo ""
+    echo -e "${YELLOW}📱 Shared code changed - iOS app may need update too${NC}"
+    echo "   Run: ./scripts/deploy-to-testflight.sh --auto"
+fi
