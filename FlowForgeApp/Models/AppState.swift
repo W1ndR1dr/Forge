@@ -4,6 +4,37 @@ import Observation
 import UIKit
 #endif
 
+/// Connection state for offline-first architecture
+enum ConnectionState: Equatable {
+    case connected              // Pi reachable, Mac online
+    case piOnlyMode(pending: Int)  // Pi reachable, Mac offline (cached data)
+    case offline                // Can't reach Pi at all
+
+    var isFullyConnected: Bool {
+        if case .connected = self { return true }
+        return false
+    }
+
+    var macOnline: Bool {
+        if case .connected = self { return true }
+        return false
+    }
+
+    var displayText: String {
+        switch self {
+        case .connected:
+            return "Connected"
+        case .piOnlyMode(let pending):
+            if pending > 0 {
+                return "Offline Mode (\(pending) pending)"
+            }
+            return "Offline Mode (cached)"
+        case .offline:
+            return "No Connection"
+        }
+    }
+}
+
 @MainActor
 @Observable
 class AppState {
@@ -15,6 +46,11 @@ class AppState {
     var successMessage: String?  // For toast notifications
     var isConnectedToServer = false
     var connectionError: String?
+
+    // Offline-first state
+    var connectionState: ConnectionState = .offline
+    var systemStatus: SystemStatus?
+    var isDataFromCache = false
 
     // Brainstorm state
     var parsedProposals: [Proposal] = []
@@ -55,7 +91,59 @@ class AppState {
         setupWebSocket()
         Task {
             await loadProjects()
+            await refreshSystemStatus()
         }
+    }
+
+    // MARK: - System Status (Offline-First)
+
+    /// Refresh system status to determine connection state
+    func refreshSystemStatus() async {
+        do {
+            let status = try await apiClient.getSystemStatus()
+            self.systemStatus = status
+
+            if status.macOnline {
+                connectionState = .connected
+                isConnectedToServer = true
+            } else {
+                connectionState = .piOnlyMode(pending: status.pendingOperations)
+                isConnectedToServer = true  // Pi is reachable, just Mac is offline
+            }
+        } catch {
+            // Can't reach Pi at all
+            connectionState = .offline
+            isConnectedToServer = false
+            connectionError = error.localizedDescription
+        }
+    }
+
+    /// Force sync with Mac (when Mac comes back online)
+    func forceSyncWithMac() async -> Bool {
+        do {
+            let result = try await apiClient.forceSync()
+            if result.success {
+                showSuccess("Synced \(result.syncedProjects.count) project(s)")
+                await refreshSystemStatus()
+                await loadFeatures()
+                return true
+            } else {
+                errorMessage = result.message
+                return false
+            }
+        } catch {
+            errorMessage = "Sync failed: \(error.localizedDescription)"
+            return false
+        }
+    }
+
+    /// Check if Mac is required for an operation (and show friendly error if offline)
+    func requiresMac(for operation: String) -> Bool {
+        guard connectionState.macOnline else {
+            errorMessage = "Mac is offline. \(operation) requires your MacBook to be open."
+            return false
+        }
+        return true
     }
 
     // MARK: - Server Configuration
@@ -503,6 +591,11 @@ class AppState {
     func startFeature(_ feature: Feature) async {
         guard let project = selectedProject else { return }
 
+        // Check if Mac is online (required for git worktree creation)
+        guard requiresMac(for: "Starting a feature") else {
+            return
+        }
+
         do {
             #if os(iOS)
             // iOS: Just start the feature - user will copy prompt to Claude web
@@ -582,6 +675,11 @@ class AppState {
     /// Returns true if successful (for celebration trigger)
     func shipFeature(_ feature: Feature) async -> Bool {
         guard let project = selectedProject else { return false }
+
+        // Check if Mac is online (required for git merge)
+        guard requiresMac(for: "Shipping a feature") else {
+            return false
+        }
 
         do {
             // First check if merge is safe
