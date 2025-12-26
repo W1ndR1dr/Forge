@@ -733,62 +733,6 @@
       "session_id": null,
       "extensions": {}
     },
-    "wave45-autonomous-sessions": {
-      "id": "wave45-autonomous-sessions",
-      "title": "Autonomous Sessions (Fire-and-Forget)",
-      "description": "Launch Claude Code sessions that run autonomously. FlowForge monitors silently.",
-      "status": "in-progress",
-      "priority": 1,
-      "complexity": "large",
-      "parent_id": null,
-      "children": [],
-      "depends_on": [],
-      "blocked_by": [],
-      "branch": "feature/wave45-autonomous-sessions",
-      "worktree_path": "/Users/Brian/Projects/Active/FlowForge/.flowforge-worktrees/wave45-autonomous-sessions",
-      "created_at": "2025-12-25T00:30:00.000000",
-      "updated_at": "2025-12-25T07:42:01.362146",
-      "completed_at": null,
-      "spec_path": null,
-      "prompt_path": "/Users/Brian/Projects/Active/FlowForge/.flowforge/prompts/wave45-autonomous-sessions.md",
-      "notes": "Wave 4.5 - session.py for fire-and-forget Claude execution",
-      "tags": [
-        "wave45",
-        "autonomous",
-        "sessions"
-      ],
-      "session_id": null,
-      "extensions": {}
-    },
-    "wave45-session-monitoring": {
-      "id": "wave45-session-monitoring",
-      "title": "Silent Session Monitoring",
-      "description": "Poll/SSE to track Claude session progress. Show 'Claude is working...' in Mission Control.",
-      "status": "planned",
-      "priority": 2,
-      "complexity": "medium",
-      "parent_id": null,
-      "children": [],
-      "depends_on": [
-        "wave45-autonomous-sessions"
-      ],
-      "blocked_by": [],
-      "branch": null,
-      "worktree_path": null,
-      "created_at": "2025-12-25T00:30:00.000000",
-      "updated_at": "2025-12-25T00:30:00.000000",
-      "completed_at": null,
-      "spec_path": null,
-      "prompt_path": null,
-      "notes": "Wave 4.5 - Progress visibility without interruption",
-      "tags": [
-        "wave45",
-        "monitoring",
-        "sessions"
-      ],
-      "session_id": null,
-      "extensions": {}
-    },
     "wave5-vibe-input": {
       "id": "wave5-vibe-input",
       "title": "Vibe Input (Single Text Entry)",
