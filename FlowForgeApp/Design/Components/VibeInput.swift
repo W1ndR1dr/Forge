@@ -110,130 +110,7 @@ struct VibeInput: View {
     }
 }
 
-// MARK: - Scope Creep Indicator
-// Shows as-you-type feedback about feature complexity
-// Uses /api/quick-scope for smarter detection with local fallback
-
-struct ScopeCreepIndicator: View {
-    let text: String
-    @State private var analysis: ScopeAnalysis?
-    @State private var debounceTask: Task<Void, Never>?
-
-    private let apiClient = APIClient()
-
-    var body: some View {
-        Group {
-            if let analysis = analysis, analysis.hasWarning {
-                HStack(spacing: Spacing.small) {
-                    Image(systemName: analysis.icon)
-                        .foregroundColor(analysis.color)
-
-                    Text(analysis.message)
-                        .font(Typography.caption)
-                        .foregroundColor(.secondary)
-                }
-                .padding(.horizontal, Spacing.medium)
-                .padding(.vertical, Spacing.small)
-                .background(analysis.color.opacity(0.1))
-                .cornerRadius(CornerRadius.medium)
-                .transition(.scaleAndFade)
-            }
-        }
-        .animation(SpringPreset.smooth, value: analysis?.hasWarning)
-        .onChange(of: text) { _, newValue in
-            analyzeTextDebounced(newValue)
-        }
-    }
-
-    /// Debounce analysis to avoid API spam
-    private func analyzeTextDebounced(_ text: String) {
-        // Cancel previous pending analysis
-        debounceTask?.cancel()
-
-        // Immediate local check for obvious issues
-        if let localAnalysis = quickLocalCheck(text) {
-            analysis = localAnalysis
-            return
-        }
-
-        // Clear analysis for short text
-        guard text.count >= 10 else {
-            analysis = nil
-            return
-        }
-
-        // Debounce API call (300ms)
-        debounceTask = Task {
-            try? await Task.sleep(nanoseconds: 300_000_000)
-
-            guard !Task.isCancelled else { return }
-
-            await analyzeTextRemote(text)
-        }
-    }
-
-    /// Quick local check for immediate feedback
-    private func quickLocalCheck(_ text: String) -> ScopeAnalysis? {
-        let lowered = text.lowercased()
-
-        if text.count > 100 {
-            return ScopeAnalysis(
-                hasWarning: true,
-                message: "This might be too big for one feature. Consider breaking it down.",
-                icon: "exclamationmark.triangle",
-                color: Accent.warning
-            )
-        } else if lowered.contains(" and also ") || lowered.contains(" plus ") {
-            return ScopeAnalysis(
-                hasWarning: true,
-                message: "Scope creep detected. Focus on one thing.",
-                icon: "arrow.left.arrow.right",
-                color: Accent.warning
-            )
-        } else if lowered.contains(" additionally ") || lowered.contains(" as well as ") {
-            return ScopeAnalysis(
-                hasWarning: true,
-                message: "Multiple features detected. Pick the most important one.",
-                icon: "arrow.triangle.branch",
-                color: Accent.warning
-            )
-        }
-
-        return nil
-    }
-
-    /// Call quick-scope API for smarter analysis
-    private func analyzeTextRemote(_ text: String) async {
-        do {
-            let response = try await apiClient.quickScopeCheck(text: text)
-
-            await MainActor.run {
-                if response.hasWarnings, let firstWarning = response.warnings.first {
-                    analysis = ScopeAnalysis(
-                        hasWarning: true,
-                        message: firstWarning,
-                        icon: "exclamationmark.triangle",
-                        color: Accent.warning
-                    )
-                } else {
-                    analysis = nil
-                }
-            }
-        } catch {
-            // Silent fail - local analysis is good enough
-            print("Quick scope check unavailable: \(error)")
-        }
-    }
-}
-
-struct ScopeAnalysis: Equatable {
-    let hasWarning: Bool
-    let message: String
-    let icon: String
-    let color: Color
-}
-
-// MARK: - Enhanced Vibe Input with Scope Detection
+// MARK: - Enhanced Vibe Input (Real AI analysis happens on submit, not as-you-type)
 
 struct VibeInputWithScope: View {
     @Binding var text: String
@@ -242,16 +119,13 @@ struct VibeInputWithScope: View {
     let slotsRemaining: Int
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.small) {
-            VibeInput(
-                text: $text,
-                isAnalyzing: isAnalyzing,
-                slotsRemaining: slotsRemaining,
-                onSubmit: onSubmit
-            )
-
-            ScopeCreepIndicator(text: text)
-        }
+        // Just the input - real AI analysis happens when you submit
+        VibeInput(
+            text: $text,
+            isAnalyzing: isAnalyzing,
+            slotsRemaining: slotsRemaining,
+            onSubmit: onSubmit
+        )
     }
 }
 
