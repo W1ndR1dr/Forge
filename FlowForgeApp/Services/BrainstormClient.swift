@@ -52,6 +52,8 @@ final class BrainstormClient: ObservableObject {
     private var webSocketTask: URLSessionWebSocketTask?
     private var pingTimer: Timer?
     private var currentProject: String?
+    private var currentFeatureId: String?
+    private var currentFeatureTitle: String?
     private let session: URLSession
     private var currentAssistantMessage: BrainstormMessage?
 
@@ -70,12 +72,18 @@ final class BrainstormClient: ObservableObject {
     // MARK: - Connection
 
     /// Connect to brainstorm WebSocket for a project
-    func connect(project: String) {
+    /// - Parameters:
+    ///   - project: Project name
+    ///   - featureId: Optional feature ID for crystallization mode
+    ///   - featureTitle: Optional feature title for crystallization mode
+    func connect(project: String, featureId: String? = nil, featureTitle: String? = nil) {
         if currentProject != nil {
             disconnect()
         }
 
         currentProject = project
+        currentFeatureId = featureId
+        currentFeatureTitle = featureTitle
         establishConnection()
     }
 
@@ -167,6 +175,26 @@ final class BrainstormClient: ObservableObject {
         lastError = nil
 
         print("Brainstorm WebSocket connecting to: \(url)")
+
+        // Send init message with feature context for crystallization mode
+        sendInitMessage()
+    }
+
+    /// Send init message with feature context (for crystallization mode)
+    private func sendInitMessage() {
+        var payload: [String: Any] = ["type": "init"]
+
+        if let featureId = currentFeatureId {
+            payload["feature_id"] = featureId
+        }
+        if let featureTitle = currentFeatureTitle {
+            payload["feature_title"] = featureTitle
+        }
+
+        if let data = try? JSONSerialization.data(withJSONObject: payload),
+           let jsonString = String(data: data, encoding: .utf8) {
+            webSocketTask?.send(.string(jsonString)) { _ in }
+        }
     }
 
     private func receiveMessage() {

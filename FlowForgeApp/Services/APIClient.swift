@@ -174,6 +174,30 @@ actor APIClient {
         let _: EmptyResponse = try await patch(url: url, body: body)
     }
 
+    /// Update a feature with crystallized spec details
+    /// Used when refining an idea through brainstorm chat
+    func updateFeatureWithSpec(
+        project: String,
+        featureId: String,
+        title: String,
+        description: String,
+        howItWorks: [String],
+        filesAffected: [String],
+        estimatedScope: String
+    ) async throws {
+        let url = baseURL.appendingPathComponent("api/\(project)/features/\(featureId)/spec")
+
+        let body: [String: Any] = [
+            "title": title,
+            "description": description,
+            "how_it_works": howItWorks,
+            "files_affected": filesAffected,
+            "estimated_scope": estimatedScope,
+        ]
+
+        let _: EmptyResponse = try await patch(url: url, body: body)
+    }
+
     /// Delete a feature
     func deleteFeature(project: String, featureId: String, force: Bool = false) async throws {
         var url = baseURL.appendingPathComponent("api/\(project)/features/\(featureId)")

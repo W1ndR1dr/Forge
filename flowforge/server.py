@@ -888,6 +888,60 @@ async def update_feature(
     return result.data
 
 
+class UpdateFeatureSpecRequest(BaseModel):
+    """Request to update a feature with crystallized spec details."""
+    title: str
+    description: str
+    how_it_works: list[str] = []
+    files_affected: list[str] = []
+    estimated_scope: str = "Medium"
+
+
+@app.patch("/api/{project}/features/{feature_id}/spec")
+async def update_feature_spec(
+    project: str,
+    feature_id: str,
+    request: UpdateFeatureSpecRequest,
+):
+    """
+    Update a feature with crystallized spec details.
+
+    Used when refining an idea through the brainstorm chat.
+    Updates title, description, and stores spec metadata.
+    """
+    # Get project context
+    try:
+        project_path, config, registry = mcp_server._get_project_context(project)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    # Get the feature
+    feature = registry.get_feature(feature_id)
+    if not feature:
+        raise HTTPException(status_code=404, detail=f"Feature not found: {feature_id}")
+
+    # Build description with spec details
+    full_description = request.description
+    if request.how_it_works:
+        full_description += "\n\nHow it works:\n" + "\n".join(f"- {item}" for item in request.how_it_works)
+    if request.files_affected:
+        full_description += "\n\nFiles likely affected:\n" + "\n".join(f"- {f}" for f in request.files_affected)
+    if request.estimated_scope:
+        full_description += f"\n\nEstimated scope: {request.estimated_scope}"
+
+    # Update the feature
+    registry.update_feature(
+        feature_id,
+        title=request.title,
+        description=full_description,
+    )
+
+    # Broadcast update
+    await ws_manager.broadcast_feature_update(project, feature_id, "updated")
+
+    return {"success": True, "message": f"Updated feature with crystallized spec: {request.title}"}
+
+
 @app.post("/api/{project}/features/{feature_id}/crystallize")
 async def crystallize_feature(project: str, feature_id: str):
     """
@@ -1836,6 +1890,10 @@ async def brainstorm_websocket(websocket: WebSocket, project: str):
         # Create or get existing brainstorm session
         from .agents.brainstorm import BrainstormAgent
 
+        # Track feature being refined (set by init message)
+        refining_feature_id = None
+        refining_feature_title = None
+
         if project not in brainstorm_sessions:
             brainstorm_sessions[project] = BrainstormAgent(
                 project_name=project,
@@ -1854,7 +1912,29 @@ async def brainstorm_websocket(websocket: WebSocket, project: str):
         while True:
             data = await websocket.receive_json()
 
-            if data.get("type") == "message":
+            if data.get("type") == "init":
+                # Client sending feature context for crystallization mode
+                refining_feature_id = data.get("feature_id")
+                refining_feature_title = data.get("feature_title")
+
+                # Create a fresh session with feature context
+                brainstorm_sessions[project] = BrainstormAgent(
+                    project_name=project,
+                    project_context=project_context,
+                    existing_features=existing_features,
+                    existing_feature_title=refining_feature_title,  # Crystallization mode
+                )
+                agent = brainstorm_sessions[project]
+
+                # Acknowledge init
+                await websocket.send_json({
+                    "type": "session_state",
+                    "state": agent.get_conversation_state(),
+                    "refining_feature_id": refining_feature_id,
+                    "refining_feature_title": refining_feature_title,
+                })
+
+            elif data.get("type") == "message":
                 user_message = data.get("content", "")
 
                 # Stream the response

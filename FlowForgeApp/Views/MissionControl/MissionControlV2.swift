@@ -29,7 +29,8 @@ struct MissionControlV2: View {
     }
 
     private var upNextFeatures: [Feature] {
-        Array(appState.features.filter { $0.status == .planned }.prefix(3))
+        // Show ALL planned features - ideas are unlimited, discipline comes at START
+        appState.features.filter { $0.status == .planned }
     }
 
     private var slotsRemaining: Int {
@@ -79,15 +80,10 @@ struct MissionControlV2: View {
                     // Active Workspaces (parallel development)
                     ActiveWorkspacesSection()
 
-                    // Level 2: The Pipeline (peripheral awareness)
-                    pipelineSection
+                    // The Queue - where ideas live until you START them
+                    ideaQueueSection
 
-                    // Level 2.5: Idea Inbox (quick captures)
-                    if !ideaFeatures.isEmpty {
-                        ideaInboxSection
-                    }
-
-                    // Level 3: Shipped This Week
+                    // Shipped This Week - motivation/streak
                     shippedSection
                 }
                 .padding(Spacing.large)
@@ -134,8 +130,11 @@ struct MissionControlV2: View {
         }
         .sheet(isPresented: $showingBrainstorm) {
             if let project = appState.selectedProject {
-                BrainstormChatView(project: project.name)
-                    .environment(appState)
+                BrainstormChatView(
+                    project: project.name,
+                    existingFeature: brainstormFeature  // Pass feature being refined
+                )
+                .environment(appState)
             }
         }
     }
@@ -171,60 +170,66 @@ struct MissionControlV2: View {
         }
     }
 
-    // MARK: - Pipeline Section
+    // MARK: - Idea Queue Section (The One Queue)
 
-    private var pipelineSection: some View {
-        HStack(alignment: .top, spacing: Spacing.medium) {
-            // Up Next Queue
-            upNextCard
-
-            // Blocked indicator
-            if !blockedFeatures.isEmpty {
-                blockedCard
-            }
-
-            // Quick stats
-            statsCard
-        }
-    }
-
-    private var upNextCard: some View {
-        VStack(alignment: .leading, spacing: Spacing.small) {
+    private var ideaQueueSection: some View {
+        VStack(alignment: .leading, spacing: Spacing.medium) {
+            // Header
             HStack {
-                Text("UP NEXT")
-                    .sectionHeaderStyle()
+                HStack(spacing: Spacing.small) {
+                    Image(systemName: "lightbulb.fill")
+                        .foregroundColor(Accent.warning)
+                    Text("IDEA INBOX")
+                        .sectionHeaderStyle()
+                }
+
+                if !upNextFeatures.isEmpty {
+                    Text("\(upNextFeatures.count)")
+                        .badgeStyle(color: Accent.warning)
+                }
 
                 Spacer()
-
-                // Slot indicators
-                HStack(spacing: Spacing.micro) {
-                    ForEach(0..<3) { index in
-                        Circle()
-                            .fill(index < upNextFeatures.count ? StatusColor.inProgressFallback : Color.secondary.opacity(0.3))
-                            .frame(width: 6, height: 6)
-                    }
-                }
             }
 
+            // The queue
             if upNextFeatures.isEmpty {
-                EmptyBlockedView()
-                    .frame(height: 80)
+                VStack(spacing: Spacing.medium) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 32))
+                        .foregroundColor(.secondary.opacity(0.5))
+                    Text("No ideas yet")
+                        .font(Typography.body)
+                        .foregroundColor(.secondary)
+                    Text("Type above to capture an idea")
+                        .font(Typography.caption)
+                        .foregroundColor(.secondary.opacity(0.7))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(Spacing.xl)
             } else {
-                VStack(spacing: Spacing.small) {
-                    ForEach(Array(upNextFeatures.enumerated()), id: \.element.id) { index, feature in
-                        UpNextCardV2(
-                            feature: feature,
-                            position: index + 1,
-                            onRefine: { refineFeature(feature) }
-                        )
+                // Scrollable list of ideas
+                ScrollView {
+                    VStack(spacing: Spacing.small) {
+                        ForEach(Array(upNextFeatures.enumerated()), id: \.element.id) { index, feature in
+                            IdeaQueueCard(
+                                feature: feature,
+                                position: index + 1,
+                                onRefine: { refineFeature(feature) },
+                                onStart: {
+                                    Task {
+                                        await appState.startFeature(feature)
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
+                .frame(maxHeight: 300)  // Scrollable if many ideas
             }
         }
         .padding(Spacing.standard)
         .background(Surface.elevated)
         .cornerRadius(CornerRadius.large)
-        .frame(maxWidth: .infinity)
     }
 
     private var blockedCard: some View {
@@ -835,7 +840,74 @@ struct PromptPreviewSheet: View {
     #endif
 }
 
-// MARK: - Up Next Card V2
+// MARK: - Idea Queue Card (Simplified Flow)
+
+struct IdeaQueueCard: View {
+    let feature: Feature
+    let position: Int
+    var onRefine: (() -> Void)?
+    var onStart: (() -> Void)?
+
+    @State private var isHovered = false
+
+    var body: some View {
+        HStack(spacing: Spacing.medium) {
+            // Position badge
+            Text("\(position)")
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+                .frame(width: 24, height: 24)
+                .background(Accent.primary)
+                .clipShape(Circle())
+
+            // Title
+            Text(feature.title)
+                .font(Typography.body)
+                .lineLimit(2)
+
+            Spacer()
+
+            // Actions (always visible for clarity)
+            HStack(spacing: Spacing.small) {
+                // Refine button - opens Brainstorm chat
+                Button(action: { onRefine?() }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "sparkles")
+                        Text("Refine")
+                    }
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(Accent.primary)
+                    .padding(.horizontal, Spacing.small)
+                    .padding(.vertical, 4)
+                    .background(Accent.primary.opacity(0.1))
+                    .cornerRadius(CornerRadius.small)
+                }
+                .buttonStyle(.plain)
+
+                // START button - generates prompt, launches Claude Code
+                Button(action: { onStart?() }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "play.fill")
+                        Text("START")
+                    }
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, Spacing.medium)
+                    .padding(.vertical, 6)
+                    .background(Accent.success)
+                    .cornerRadius(CornerRadius.small)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(Spacing.medium)
+        .background(isHovered ? Surface.highlighted : Surface.elevated)
+        .cornerRadius(CornerRadius.medium)
+        .onHover { isHovered = $0 }
+    }
+}
+
+// MARK: - Up Next Card V2 (Legacy)
 
 struct UpNextCardV2: View {
     let feature: Feature

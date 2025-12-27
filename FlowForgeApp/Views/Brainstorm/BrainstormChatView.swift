@@ -17,6 +17,12 @@ struct BrainstormChatView: View {
     @FocusState private var isInputFocused: Bool
 
     let project: String
+    var existingFeature: Feature?  // Feature being refined (nil = new brainstorm)
+
+    /// Whether we're refining an existing feature vs brainstorming new ideas
+    private var isRefiningFeature: Bool {
+        existingFeature != nil
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -59,7 +65,11 @@ struct BrainstormChatView: View {
         }
         .frame(minWidth: 500, minHeight: 500)
         .onAppear {
-            client.connect(project: project)
+            client.connect(
+                project: project,
+                featureId: existingFeature?.id,
+                featureTitle: existingFeature?.title
+            )
             client.onSpecReady = { spec in
                 showingSpec = true
             }
@@ -70,8 +80,12 @@ struct BrainstormChatView: View {
         }
         .sheet(isPresented: $showingSpec) {
             if let spec = client.currentSpec {
-                SpecPreviewSheet(spec: spec, project: project)
-                    .environment(appState)
+                SpecPreviewSheet(
+                    spec: spec,
+                    project: project,
+                    existingFeature: existingFeature  // Pass for update vs create logic
+                )
+                .environment(appState)
             }
         }
     }
@@ -81,8 +95,18 @@ struct BrainstormChatView: View {
     private var headerView: some View {
         HStack {
             VStack(alignment: .leading, spacing: Spacing.micro) {
-                Text("Brainstorm")
-                    .font(Typography.featureTitle)
+                // Show context when refining an existing feature
+                if let feature = existingFeature {
+                    Text("Refining")
+                        .font(Typography.caption)
+                        .foregroundColor(Accent.primary)
+                    Text(feature.title)
+                        .font(Typography.featureTitle)
+                        .lineLimit(1)
+                } else {
+                    Text("Brainstorm")
+                        .font(Typography.featureTitle)
+                }
 
                 HStack(spacing: Spacing.small) {
                     Circle()
@@ -116,28 +140,62 @@ struct BrainstormChatView: View {
 
     private var emptyStateView: some View {
         VStack(spacing: Spacing.large) {
-            Image(systemName: "lightbulb.fill")
+            Image(systemName: isRefiningFeature ? "sparkles" : "lightbulb.fill")
                 .font(.system(size: 48))
-                .foregroundColor(Accent.warning.opacity(0.6))
+                .foregroundColor(isRefiningFeature ? Accent.primary.opacity(0.6) : Accent.warning.opacity(0.6))
 
             VStack(spacing: Spacing.small) {
-                Text("What would you like to build?")
-                    .font(Typography.sectionHeader)
+                if let feature = existingFeature {
+                    Text("Let's crystallize this idea")
+                        .font(Typography.sectionHeader)
 
-                Text("Describe your idea and I'll help you turn it into a spec.")
-                    .font(Typography.body)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
+                    Text("I'll ask questions to help make \"\(feature.title)\" specific and implementable.")
+                        .font(Typography.body)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                } else {
+                    Text("What would you like to build?")
+                        .font(Typography.sectionHeader)
+
+                    Text("Describe your idea and I'll help you turn it into a spec.")
+                        .font(Typography.body)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
             }
 
-            VStack(alignment: .leading, spacing: Spacing.small) {
-                suggestionChip("Add dark mode to the app")
-                suggestionChip("Show heart rate during workouts")
-                suggestionChip("Let users export their data")
+            // Only show suggestion chips for new brainstorms
+            if !isRefiningFeature {
+                VStack(alignment: .leading, spacing: Spacing.small) {
+                    suggestionChip("Add dark mode to the app")
+                    suggestionChip("Show heart rate during workouts")
+                    suggestionChip("Let users export their data")
+                }
+            } else {
+                // For refinement, show a "Start" button to kick things off
+                Button(action: { startRefinement() }) {
+                    HStack {
+                        Image(systemName: "arrow.right.circle.fill")
+                        Text("Start Refining")
+                    }
+                    .padding(.horizontal, Spacing.large)
+                    .padding(.vertical, Spacing.medium)
+                    .background(Accent.primary)
+                    .foregroundColor(.white)
+                    .cornerRadius(CornerRadius.large)
+                }
+                .buttonStyle(.plain)
             }
         }
         .padding(.vertical, Spacing.xl)
         .frame(maxWidth: .infinity)
+    }
+
+    /// Auto-start refinement with the feature title as context
+    private func startRefinement() {
+        guard let feature = existingFeature else { return }
+        // Send the feature title to Claude to start the crystallization process
+        client.sendMessage("I want to refine this idea: \(feature.title)")
     }
 
     private func suggestionChip(_ text: String) -> some View {
@@ -254,17 +312,29 @@ struct SpecPreviewSheet: View {
 
     let spec: BrainstormClient.CrystallizedSpec
     let project: String
+    var existingFeature: Feature?  // Feature being refined (nil = create new)
 
     @State private var isCreating = false
+
+    /// Whether we're updating an existing feature vs creating new
+    private var isUpdating: Bool {
+        existingFeature != nil
+    }
 
     var body: some View {
         VStack(spacing: Spacing.large) {
             // Header
             HStack {
                 VStack(alignment: .leading, spacing: Spacing.micro) {
-                    Label("Spec Ready", systemImage: "checkmark.seal.fill")
-                        .font(Typography.caption)
-                        .foregroundColor(Accent.success)
+                    if isUpdating {
+                        Label("Crystallized", systemImage: "sparkles")
+                            .font(Typography.caption)
+                            .foregroundColor(Accent.primary)
+                    } else {
+                        Label("Spec Ready", systemImage: "checkmark.seal.fill")
+                            .font(Typography.caption)
+                            .foregroundColor(Accent.success)
+                    }
 
                     Text(spec.title)
                         .font(Typography.sectionHeader)
@@ -339,12 +409,13 @@ struct SpecPreviewSheet: View {
 
                 Spacer()
 
-                Button(action: createFeature) {
+                Button(action: applySpec) {
                     if isCreating {
                         ProgressView()
                             .scaleEffect(0.7)
                     } else {
-                        Label("Build This", systemImage: "hammer.fill")
+                        Label(isUpdating ? "Apply Changes" : "Build This",
+                              systemImage: isUpdating ? "checkmark.circle.fill" : "hammer.fill")
                     }
                 }
                 .buttonStyle(.borderedProminent)
@@ -364,14 +435,24 @@ struct SpecPreviewSheet: View {
         }
     }
 
-    private func createFeature() {
+    private func applySpec() {
         isCreating = true
 
         Task {
-            // Create the feature via AppState
-            // Note: AppState.addFeature only takes title currently
-            // The description comes from the spec's whatItDoes
-            await appState.addFeature(title: spec.title)
+            if let feature = existingFeature {
+                // UPDATE existing feature with crystallized spec
+                await appState.updateFeatureWithSpec(
+                    featureId: feature.id,
+                    title: spec.title,
+                    description: spec.whatItDoes,
+                    howItWorks: spec.howItWorks,
+                    filesAffected: spec.filesAffected,
+                    estimatedScope: spec.estimatedScope
+                )
+            } else {
+                // CREATE new feature from spec
+                await appState.addFeature(title: spec.title)
+            }
 
             await MainActor.run {
                 isCreating = false

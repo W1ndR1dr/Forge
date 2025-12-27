@@ -51,19 +51,37 @@ class BrainstormSession:
     project_name: str
     project_context: str
     existing_features: list[str]
+    existing_feature_title: Optional[str] = None  # For crystallization mode
     messages: list[BrainstormMessage] = field(default_factory=list)
     spec_ready: bool = False
     current_spec: Optional[SpecResult] = None
 
+    @property
+    def is_crystallizing(self) -> bool:
+        """Whether we're refining an existing feature vs brainstorming new ideas."""
+        return self.existing_feature_title is not None
+
     def get_system_prompt(self) -> str:
         """Generate the system prompt for this session."""
+        from .prompts import BRAINSTORM_SYSTEM_PROMPT, CRYSTALLIZE_SYSTEM_PROMPT
+
         features_str = "\n".join(f"- {f}" for f in self.existing_features) if self.existing_features else "(none yet)"
 
-        return BRAINSTORM_SYSTEM_PROMPT.format(
-            project_name=self.project_name,
-            project_context=self.project_context or "(no project context provided)",
-            existing_features=features_str,
-        )
+        if self.is_crystallizing:
+            # Crystallization mode: refining an existing idea
+            return CRYSTALLIZE_SYSTEM_PROMPT.format(
+                project_name=self.project_name,
+                project_context=self.project_context or "(no project context provided)",
+                feature_title=self.existing_feature_title,
+                existing_features=features_str,
+            )
+        else:
+            # Brainstorm mode: generating new ideas
+            return BRAINSTORM_SYSTEM_PROMPT.format(
+                project_name=self.project_name,
+                project_context=self.project_context or "(no project context provided)",
+                existing_features=features_str,
+            )
 
 
 class BrainstormAgent:
@@ -79,11 +97,13 @@ class BrainstormAgent:
         project_name: str,
         project_context: str = "",
         existing_features: Optional[list[str]] = None,
+        existing_feature_title: Optional[str] = None,  # For crystallization mode
     ):
         self.session = BrainstormSession(
             project_name=project_name,
             project_context=project_context,
             existing_features=existing_features or [],
+            existing_feature_title=existing_feature_title,
         )
 
     async def send_message(

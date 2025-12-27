@@ -701,6 +701,42 @@ class AppState {
         }
     }
 
+    /// Update a feature with crystallized spec details
+    /// This is used when refining an existing idea through brainstorm chat
+    func updateFeatureWithSpec(
+        featureId: String,
+        title: String,
+        description: String,
+        howItWorks: [String],
+        filesAffected: [String],
+        estimatedScope: String
+    ) async {
+        guard let project = selectedProject else { return }
+
+        do {
+            try await apiClient.updateFeatureWithSpec(
+                project: project.name,
+                featureId: featureId,
+                title: title,
+                description: description,
+                howItWorks: howItWorks,
+                filesAffected: filesAffected,
+                estimatedScope: estimatedScope
+            )
+
+            // Update local state
+            if let index = features.firstIndex(where: { $0.id == featureId }) {
+                features[index].title = title
+                features[index].description = description
+            }
+
+            self.successMessage = "Refined: \(title)"
+            await loadFeatures()  // Reload to get full updated state
+        } catch {
+            self.errorMessage = "Failed to update feature: \(error.localizedDescription)"
+        }
+    }
+
     // MARK: - Ship Feature (Merge)
 
     /// Ship a feature - merges it and triggers celebration
