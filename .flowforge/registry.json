@@ -787,9 +787,9 @@
       "session_id": null,
       "extensions": {}
     },
-    "test-feature-from-curl": {
-      "id": "test-feature-from-curl",
-      "title": "test feature from curl",
+    "add-button-to-hidereveal-projects-in-sidebar": {
+      "id": "add-button-to-hidereveal-projects-in-sidebar",
+      "title": "Add button to hide/reveal projects in sidebar",
       "description": "",
       "status": "idea",
       "priority": 5,
@@ -800,54 +800,8 @@
       "blocked_by": [],
       "branch": null,
       "worktree_path": null,
-      "created_at": "2025-12-26T15:20:33.007009",
-      "updated_at": "2025-12-26T15:20:33.007015",
-      "completed_at": null,
-      "spec_path": null,
-      "prompt_path": null,
-      "notes": null,
-      "tags": [],
-      "session_id": null,
-      "extensions": {}
-    },
-    "test-feature-after-fix": {
-      "id": "test-feature-after-fix",
-      "title": "Test feature after fix",
-      "description": "",
-      "status": "planned",
-      "priority": 5,
-      "complexity": "medium",
-      "parent_id": null,
-      "children": [],
-      "depends_on": [],
-      "blocked_by": [],
-      "branch": null,
-      "worktree_path": null,
-      "created_at": "2025-12-26T16:23:55.753432",
-      "updated_at": "2025-12-26T16:23:55.753442",
-      "completed_at": null,
-      "spec_path": null,
-      "prompt_path": null,
-      "notes": null,
-      "tags": [],
-      "session_id": null,
-      "extensions": {}
-    },
-    "add-button-to-hidereveal-projects-in-sidebar": {
-      "id": "add-button-to-hidereveal-projects-in-sidebar",
-      "title": "Add button to hide/reveal projects in sidebar",
-      "description": "",
-      "status": "planned",
-      "priority": 5,
-      "complexity": "medium",
-      "parent_id": null,
-      "children": [],
-      "depends_on": [],
-      "blocked_by": [],
-      "branch": null,
-      "worktree_path": null,
       "created_at": "2025-12-26T16:28:59.287733",
-      "updated_at": "2025-12-26T16:28:59.287762",
+      "updated_at": "2025-12-26T21:59:28.184789",
       "completed_at": null,
       "spec_path": null,
       "prompt_path": null,
@@ -860,7 +814,7 @@
       "id": "add-hidereveal-for-sidebar-projects",
       "title": "Add hide/reveal for sidebar projects",
       "description": null,
-      "status": "planned",
+      "status": "idea",
       "priority": 5,
       "complexity": "medium",
       "parent_id": null,
@@ -870,76 +824,7 @@
       "branch": null,
       "worktree_path": null,
       "created_at": "2025-12-26T16:36:07.092701",
-      "updated_at": "2025-12-26T16:36:07.092706",
-      "completed_at": null,
-      "spec_path": null,
-      "prompt_path": null,
-      "notes": null,
-      "tags": [],
-      "session_id": null,
-      "extensions": {}
-    },
-    "direct-test": {
-      "id": "direct-test",
-      "title": "Direct test",
-      "description": null,
-      "status": "planned",
-      "priority": 5,
-      "complexity": "medium",
-      "parent_id": null,
-      "children": [],
-      "depends_on": [],
-      "blocked_by": [],
-      "branch": null,
-      "worktree_path": null,
-      "created_at": "2025-12-26T16:39:11.560340",
-      "updated_at": "2025-12-26T16:39:11.560346",
-      "completed_at": null,
-      "spec_path": null,
-      "prompt_path": null,
-      "notes": null,
-      "tags": [],
-      "session_id": null,
-      "extensions": {}
-    },
-    "test-c-flag": {
-      "id": "test-c-flag",
-      "title": "Test -C flag",
-      "description": null,
-      "status": "planned",
-      "priority": 5,
-      "complexity": "medium",
-      "parent_id": null,
-      "children": [],
-      "depends_on": [],
-      "blocked_by": [],
-      "branch": null,
-      "worktree_path": null,
-      "created_at": "2025-12-26T16:46:57.563566",
-      "updated_at": "2025-12-26T16:46:57.563572",
-      "completed_at": null,
-      "spec_path": null,
-      "prompt_path": null,
-      "notes": null,
-      "tags": [],
-      "session_id": null,
-      "extensions": {}
-    },
-    "testviassh": {
-      "id": "testviassh",
-      "title": "TestViaSSH",
-      "description": null,
-      "status": "planned",
-      "priority": 5,
-      "complexity": "medium",
-      "parent_id": null,
-      "children": [],
-      "depends_on": [],
-      "blocked_by": [],
-      "branch": null,
-      "worktree_path": null,
-      "created_at": "2025-12-26T16:48:01.529392",
-      "updated_at": "2025-12-26T16:48:01.529399",
+      "updated_at": "2025-12-26T21:59:28.222203",
       "completed_at": null,
       "spec_path": null,
       "prompt_path": null,
@@ -952,7 +837,7 @@
       "id": "add-hide-reveal-for-sidebar-projects",
       "title": "Add hide reveal for sidebar projects",
       "description": null,
-      "status": "planned",
+      "status": "idea",
       "priority": 5,
       "complexity": "medium",
       "parent_id": null,
@@ -962,7 +847,7 @@
       "branch": null,
       "worktree_path": null,
       "created_at": "2025-12-26T16:48:31.886350",
-      "updated_at": "2025-12-26T16:48:31.886356",
+      "updated_at": "2025-12-26T21:59:28.263043",
       "completed_at": null,
       "spec_path": null,
       "prompt_path": null,
@@ -975,7 +860,7 @@
       "id": "i-want-to-add-a-button-somewhere-to-be-able-to-hid",
       "title": "I want to add a button somewhere to be able to hide a project in the left sidebar (should also be a way to reveal hidden projects)",
       "description": null,
-      "status": "planned",
+      "status": "idea",
       "priority": 5,
       "complexity": "medium",
       "parent_id": null,
@@ -985,7 +870,7 @@
       "branch": null,
       "worktree_path": null,
       "created_at": "2025-12-26T17:05:15.012350",
-      "updated_at": "2025-12-26T17:05:15.012356",
+      "updated_at": "2025-12-26T21:59:28.296348",
       "completed_at": null,
       "spec_path": null,
       "prompt_path": null,
@@ -996,8 +881,8 @@
     },
     "we-should-be-able-to-archive-items-in-the-idea-inb": {
       "id": "we-should-be-able-to-archive-items-in-the-idea-inb",
-      "title": "we should be able to archive items in the idea inbox",
-      "description": null,
+      "title": "Archive Projects and Ideas",
+      "description": "Users can archive projects from the sidebar and ideas from the Idea Inbox to declutter their view without permanently deleting them. Archived items are hidden by default but can be viewed via a toggle to restore them if needed.\n\nHow it works:\n- Small archive icon appears on hover next to projects in sidebar and ideas in the Idea Inbox (standard UX pattern)\n- Clicking the archive icon moves the item to an \"archived\" state\n- A toggle somewhere in the UI allows viewing archived items\n- Archived items can be restored (unarchived) back to their original location\n- Archive is a soft-delete - data is preserved, just hidden from default views\n\nFiles likely affected:\n- `flowforge/registry.py` - Add `archived` field to Feature/Project models, filter logic\n- `flowforge/server.py` - Add archive/unarchive endpoints\n- `FlowForgeApp/Models/` - Update Swift models with archived property\n- `FlowForgeApp/Views/` - Add archive icons on hover, toggle for viewing archived items\n- `FlowForgeApp/Services/APIClient.swift` - Add archive/unarchive API calls\n\nEstimated scope: Medium (1-3 hours)",
       "status": "planned",
       "priority": 5,
       "complexity": "medium",
@@ -1008,7 +893,147 @@
       "branch": null,
       "worktree_path": null,
       "created_at": "2025-12-26T20:16:52.200752",
-      "updated_at": "2025-12-26T20:16:52.200760",
+      "updated_at": "2025-12-26T21:35:24.997812",
+      "completed_at": null,
+      "spec_path": null,
+      "prompt_path": null,
+      "notes": null,
+      "tags": [],
+      "session_id": null,
+      "extensions": {
+        "crystallization_history": [
+          {
+            "role": "user",
+            "content": "Help me crystallize this idea: we should be able to archive items in the idea inbox"
+          },
+          {
+            "role": "assistant",
+            "content": "Good idea! Being able to archive items in the idea inbox would help keep things tidy without permanently deleting ideas you might want later.\n\nLet me understand how you want this to work:\n\n**Where should the archive action appear?** For example:\n- A swipe action on each idea row\n- A context menu (right-click / long-press)\n- An \"Archive\" button that appears when you select an idea\n- Something else?\n"
+          },
+          {
+            "role": "user",
+            "content": "probably next to each item a small hoverable thing, something user friendly, would just stick to whatever is industry standard this isnt an important feature"
+          },
+          {
+            "role": "assistant",
+            "content": "Makes sense - something simple like a small archive icon that appears on hover. Standard pattern.\n\n**One more question:** Where do archived ideas go? Should there be:\n- A way to view archived ideas (like a toggle or separate \"Archived\" section) so you can restore them if needed\n- Or just archive and forget (essentially soft-delete, hidden forever but not destroyed)\n"
+          },
+          {
+            "role": "user",
+            "content": "yeah definiately need to be able to see archived items... maybe a small toggle for cleanliness?"
+          },
+          {
+            "role": "assistant",
+            "content": "Perfect, a toggle keeps it clean. Got it.\n\n**Last question:** Should archived ideas only live in the Idea Inbox section, or could a user potentially want to archive a feature that's already \"Planned\" but they've decided not to pursue?\n\n(Thinking about whether \"archive\" is just for raw ideas or a general-purpose \"put this aside\" action across all statuses.)\n"
+          },
+          {
+            "role": "user",
+            "content": "oh shoot i was actually talking about projects, but yes we should have archivable ideas too!"
+          },
+          {
+            "role": "assistant",
+            "content": "Ah, two-for-one! So we're talking about:\n\n1. **Archive projects** in the sidebar (what you originally meant)\n2. **Archive ideas** in the Idea Inbox (bonus)\n\nLet me make sure I understand the **project archiving**:\n\nWhen you archive a project, should it:\n- Completely hide from the sidebar (with a toggle somewhere to see \"Archived Projects\")\n- Or just collapse/dim it at the bottom of the sidebar?\n\nAnd where would the \"view archived projects\" toggle live - in the sidebar header, or in Settings somewhere?\n"
+          },
+          {
+            "role": "user",
+            "content": "ill defer these minor design decisions to later.  close enough for now."
+          },
+          {
+            "role": "assistant",
+            "content": "SPEC_READY\n\nFEATURE: Archive Projects and Ideas\n\nWHAT IT DOES:\nUsers can archive projects from the sidebar and ideas from the Idea Inbox to declutter their view without permanently deleting them. Archived items are hidden by default but can be viewed via a toggle to restore them if needed.\n\nHOW IT WORKS:\n- Small archive icon appears on hover next to projects in sidebar and ideas in the Idea Inbox (standard UX pattern)\n- Clicking the archive icon moves the item to an \"archived\" state\n- A toggle somewhere in the UI allows viewing archived items\n- Archived items can be restored (unarchived) back to their original location\n- Archive is a soft-delete - data is preserved, just hidden from default views\n\nFILES LIKELY AFFECTED:\n- `flowforge/registry.py` - Add `archived` field to Feature/Project models, filter logic\n- `flowforge/server.py` - Add archive/unarchive endpoints\n- `FlowForgeApp/Models/` - Update Swift models with archived property\n- `FlowForgeApp/Views/` - Add archive icons on hover, toggle for viewing archived items\n- `FlowForgeApp/Services/APIClient.swift` - Add archive/unarchive API calls\n\nESTIMATED SCOPE:\nMedium (1-3 hours)\n"
+          }
+        ]
+      }
+    },
+    "should-move-the-brain-button-and-the-plus-button-s": {
+      "id": "should-move-the-brain-button-and-the-plus-button-s",
+      "title": "Quick Brainstorm Button (Contextual Idea Generator)",
+      "description": "Separates the capture UI into two distinct buttons: a + button for freetext quick capture, and a brain button that generates 3 contextual idea suggestions based on the project's existing features and recent commits. Users tap any suggestion to add it to the inbox instantly.\n\nHow it works:\n- + button opens existing quick capture input (freetext, low friction)\n- Brain button shows a popover with loading state (pulsing brain or skeleton chips)\n- Backend fetches: project name, existing feature titles, last ~15 git commits\n- AI generates 3 short-phrase ideas that don't duplicate existing/completed features\n- Ideas appear as tappable chips in the popover\n- Tapping a chip instantly adds it to inbox as \"idea\" status\n- User can tap brain again for 3 more if nothing resonates (magic 8-ball style)\n- Popover dismisses after selection or tap-outside\n\nFiles likely affected:\n- `FlowForgeApp/Views/VibeInput.swift` (split into + and brain buttons)\n- `flowforge/server.py` (new `/brainstorm/quick` endpoint)\n- `flowforge/intelligence.py` (quick brainstorm prompt generation)\n- `FlowForgeApp/Services/APIClient.swift` (new endpoint call)\n- `FlowForgeApp/Views/Components/BrainstormPopover.swift` (new view)\n\nEstimated scope: Medium (1-3 hours)",
+      "status": "planned",
+      "priority": 5,
+      "complexity": "medium",
+      "parent_id": null,
+      "children": [],
+      "depends_on": [],
+      "blocked_by": [],
+      "branch": "feature/should-move-the-brain-button-and-the-plus-button-s",
+      "worktree_path": "/Users/Brian/Projects/Active/FlowForge/.flowforge-worktrees/should-move-the-brain-button-and-the-plus-button-s",
+      "created_at": "2025-12-26T22:23:13.293773",
+      "updated_at": "2025-12-26T23:23:21.885041",
+      "completed_at": null,
+      "spec_path": null,
+      "prompt_path": "/Users/Brian/Projects/Active/FlowForge/.flowforge/prompts/should-move-the-brain-button-and-the-plus-button-s.md",
+      "notes": null,
+      "tags": [],
+      "session_id": null,
+      "extensions": {
+        "crystallization_history": [
+          {
+            "role": "user",
+            "content": "Help me crystallize this idea: should move the brain button and the plus button.  + should be to add a freetext idea and the brain button should generate ?a few? ideas in simple short words from which the user can select any to add to the inbox (bootstrapping creativity)"
+          },
+          {
+            "role": "assistant",
+            "content": "I like this idea! You're separating two distinct flows: quick capture (the +) and AI-assisted brainstorming (the brain).\n\nLet me make sure I understand the brain button flow:\n\nWhen the user taps the brain button, the AI generates a few short idea prompts. Then the user can select any (or multiple?) to add to their inbox.\n\n**My first question**: Where do these generated ideas appear? \n\nOptions I'm imagining:\n1. A dropdown/popover near the brain button with the ideas as tappable chips\n2. A modal/sheet that appears with the list\n3. They appear inline in the sidebar somehow\n\nWhich feels right for the UI you're picturing?\n"
+          },
+          {
+            "role": "user",
+            "content": "probably a popover but i imagine might take a second to generate ideas so something not too UX breaking?  WHat is a modal/sheet?"
+          },
+          {
+            "role": "assistant",
+            "content": "Good instinct on the loading time! A popover works well here - it can show a subtle loading state (maybe a pulsing brain icon or a few skeleton chips) while generating, then smoothly reveal the ideas when ready. Less jarring than a full takeover.\n\nA modal/sheet is like a full-screen or half-screen overlay that demands attention - think the iOS share sheet or a settings panel. For quick idea selection, that's probably overkill. Popover keeps you in flow.\n\n**Next question**: When the AI generates ideas, should they be:\n\n1. **Contextual** - based on the current project's existing features (e.g., if you're working on FlowForge, it might suggest \"batch operations\" or \"keyboard shortcuts for Kanban\")\n2. **Generic/inspirational** - random productivity/feature prompts to spark creativity\n3. **User-configurable** - maybe a blend, or you pick the style?\n\nWhat would help you most when you're stuck and need that creative bootstrap?\n"
+          },
+          {
+            "role": "user",
+            "content": "definately contextual, that would be needed for bootstrapping so i suppose thats some complexity but how would you approach"
+          },
+          {
+            "role": "assistant",
+            "content": "Smart call - contextual is way more useful for actually getting unstuck.\n\nFor the context, I'd keep it lightweight:\n\n**What to feed the AI:**\n- Project name\n- List of existing feature titles (already in the registry)\n- Maybe the most recent 2-3 features added (shows current focus)\n\nThat's usually enough for the AI to understand the domain and suggest complementary ideas. No need to send full feature specs or code.\n\n**On the backend:**\nThe `/brainstorm` endpoint already exists (used by BrainstormChatView). We could add a simpler `/brainstorm/quick` endpoint that:\n1. Takes project context\n2. Returns 3-5 short phrase ideas (not full specs, just sparks)\n3. Fast prompt, fast response\n\n**Question**: How many ideas feel right? \n\n- 3 ideas = quick to scan, low cognitive load\n- 5 ideas = more options but still digestible\n- Or a \"give me more\" button to generate another batch?\n\nWhat's your gut say?\n"
+          },
+          {
+            "role": "user",
+            "content": "prob 3 is fine, can run it arbitrary number of times and is like a magic 8 ball... idk tho can it look at github commits for inspiration and to not overlap?  i suppose the failure mode is duplicating already done work so maybe this would help?"
+          },
+          {
+            "role": "assistant",
+            "content": "Love the magic 8-ball vibe - shake it, get 3 ideas, shake again if none hit.\n\nThe GitHub commits idea is clever for avoiding duplicates! Here's my thinking:\n\n**What would actually help:**\n1. **Existing features list** (already planned) - prevents \"add dark mode\" when it's already done\n2. **Recent commit messages** - could show what's been shipped lately so AI doesn't suggest \"add keyboard shortcuts\" when that just landed\n\n**The catch with commits:**\n- Needs git access (already have via worktree code)\n- Commits can be cryptic (\"fix: typo\") vs. feature-level\n- Could grab last ~10-20 commits, let AI parse what's meaningful\n\n**Simpler alternative:**\n- Just compare generated ideas against existing feature titles before showing\n- If AI suggests something too similar to an existing feature, filter it out\n\n**My question**: Is the main concern duplicating *completed* work, or also avoiding overlap with *in-progress* features?\n\nThe registry already tracks feature status (idea/planned/in-progress/completed), so we could be smart about what to exclude.\n"
+          },
+          {
+            "role": "user",
+            "content": "i like 10-20 commits and AI parse, existing list feature, there are CLaude generated commit messages so there should be some reasonable english descriptions for most or all commits?  not as worried about duplicating in progress things because the paralellizability is bottlenecked by my brain (which cant do TOO many things at once). make sense?"
+          },
+          {
+            "role": "assistant",
+            "content": "Makes total sense! The commit messages being Claude-generated is a nice bonus - they should be descriptive and parseable.\n\nSo the flow is:\n1. User taps brain button\n2. Popover shows with loading state\n3. Backend grabs: project name + existing feature titles + last ~15 commits\n4. AI generates 3 short idea phrases that don't overlap with existing/shipped work\n5. User taps any to add to inbox (as \"idea\" status)\n6. Can tap brain again for 3 more if nothing hits\n\n**One more question**: When the user taps an idea chip to add it, should it:\n\nA) **Instantly add to inbox** with that exact short phrase as the title (fast, magic 8-ball feel)\n\nB) **Pre-fill the quick capture** with that phrase, letting them tweak before adding (more control)\n\nGiven your \"bootstrapping creativity\" framing, I'm guessing A feels right - the whole point is low friction when you're stuck. They can always edit later. But want to confirm!\n"
+          },
+          {
+            "role": "user",
+            "content": "well this is pre-crystallization so doesnt need to be too fancy but if we get decent ideas for free (i.e. good ideas are as cheap as bad ideas then great).  The second pass is what we're doing at this very moment in fact!  bootstrapping in action!"
+          },
+          {
+            "role": "assistant",
+            "content": "Ha! Yes, exactly - this is literally the second pass in action. Quick capture \u2192 crystallize \u2192 implement. The system working as designed.\n\nAlright, I think we've got enough clarity here. Let me write this up:\n\n---\n\nSPEC_READY\n\nFEATURE: Quick Brainstorm Button (Contextual Idea Generator)\n\nWHAT IT DOES:\nSeparates the capture UI into two distinct buttons: a + button for freetext quick capture, and a brain button that generates 3 contextual idea suggestions based on the project's existing features and recent commits. Users tap any suggestion to add it to the inbox instantly.\n\nHOW IT WORKS:\n- + button opens existing quick capture input (freetext, low friction)\n- Brain button shows a popover with loading state (pulsing brain or skeleton chips)\n- Backend fetches: project name, existing feature titles, last ~15 git commits\n- AI generates 3 short-phrase ideas that don't duplicate existing/completed features\n- Ideas appear as tappable chips in the popover\n- Tapping a chip instantly adds it to inbox as \"idea\" status\n- User can tap brain again for 3 more if nothing resonates (magic 8-ball style)\n- Popover dismisses after selection or tap-outside\n\nFILES LIKELY AFFECTED:\n- `FlowForgeApp/Views/VibeInput.swift` (split into + and brain buttons)\n- `flowforge/server.py` (new `/brainstorm/quick` endpoint)\n- `flowforge/intelligence.py` (quick brainstorm prompt generation)\n- `FlowForgeApp/Services/APIClient.swift` (new endpoint call)\n- `FlowForgeApp/Views/Components/BrainstormPopover.swift` (new view)\n\nESTIMATED SCOPE:\nMedium (1-3 hours)\n"
+          }
+        ]
+      }
+    },
+    "a-way-to-remove-items-from-idea-inbox-and-all-othe": {
+      "id": "a-way-to-remove-items-from-idea-inbox-and-all-othe",
+      "title": "A way to remove items from idea inbox and all other categories\u2026 full delete",
+      "description": "",
+      "status": "planned",
+      "priority": 5,
+      "complexity": "medium",
+      "parent_id": null,
+      "children": [],
+      "depends_on": [],
+      "blocked_by": [],
+      "branch": null,
+      "worktree_path": null,
+      "created_at": "2025-12-27T00:15:54.461554",
+      "updated_at": "2025-12-27T07:52:32.912702",
       "completed_at": null,
       "spec_path": null,
       "prompt_path": null,
