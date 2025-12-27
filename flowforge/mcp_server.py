@@ -772,18 +772,22 @@ class FlowForgeMCPServer:
                 message=f"Feature already exists: {feature_id}",
             )
 
-        # Create feature
-        feature = Feature(
-            id=feature_id,
-            title=title,
-            description=description or "",
-            tags=tags or [],
-            priority=priority,
-            complexity=Complexity.MEDIUM,
-            status=feature_status,
-        )
+        # Create feature via SSH (forge add on Mac)
+        cmd = ["forge", "add", "-C", str(project_path), title]
+        if status:
+            cmd.extend(["--status", status])
+        if description:
+            cmd.extend(["--description", description])
 
-        registry.add_feature(feature)
+        result = self.remote_executor.run_command(cmd, cwd=project_path)
+        if result.returncode != 0:
+            return MCPToolResult(
+                success=False,
+                message=f"Failed to add feature: {result.stderr or result.stdout}",
+            )
+
+        # Generate ID for response (matches what forge add creates)
+        feature_id = FeatureRegistry.generate_id(title)
         self._invalidate_cache(project)
 
         # Show remaining slots (only relevant for planned features)
@@ -851,23 +855,42 @@ class FlowForgeMCPServer:
                 message="No updates provided",
             )
 
-        try:
-            updated_feature = registry.update_feature(feature_id, **updates)
-            self._invalidate_cache(project)
+        # Update registry on Mac via SSH
+        import json
+        from datetime import datetime
+        registry_path = project_path / ".flowforge" / "registry.json"
+        registry_content = self.remote_executor.read_file(registry_path)
 
-            return MCPToolResult(
-                success=True,
-                message=f"Updated feature: {updated_feature.title}",
-                data={
-                    "feature_id": feature_id,
-                    "title": updated_feature.title,
-                    "status": updated_feature.status.value,
-                    "priority": updated_feature.priority,
-                    "tags": updated_feature.tags,
-                },
-            )
-        except ValueError as e:
-            return MCPToolResult(success=False, message=str(e))
+        if not registry_content:
+            return MCPToolResult(success=False, message="Could not read registry")
+
+        registry_data = json.loads(registry_content)
+
+        if feature_id not in registry_data.get("features", {}):
+            return MCPToolResult(success=False, message=f"Feature not found: {feature_id}")
+
+        # Apply updates
+        feature_data = registry_data["features"][feature_id]
+        for key, value in updates.items():
+            feature_data[key] = value
+        feature_data["updated_at"] = datetime.now().isoformat()
+
+        # Write updated registry
+        updated_json = json.dumps(registry_data, indent=2)
+        self.remote_executor.write_file(registry_path, updated_json)
+        self._invalidate_cache(project)
+
+        return MCPToolResult(
+            success=True,
+            message=f"Updated feature: {feature_data.get('title', feature_id)}",
+            data={
+                "feature_id": feature_id,
+                "title": feature_data.get("title"),
+                "status": feature_data.get("status"),
+                "priority": feature_data.get("priority"),
+                "tags": feature_data.get("tags", []),
+            },
+        )
 
     def _delete_feature(
         self,
@@ -881,24 +904,48 @@ class FlowForgeMCPServer:
         except ValueError as e:
             return MCPToolResult(success=False, message=str(e))
 
-        feature = registry.get_feature(feature_id)
-        if not feature:
-            return MCPToolResult(
-                success=False,
-                message=f"Feature not found: {feature_id}",
-            )
+        # Delete from registry on Mac via SSH
+        import json
+        registry_path = project_path / ".flowforge" / "registry.json"
+        registry_content = self.remote_executor.read_file(registry_path)
 
-        try:
-            registry.remove_feature(feature_id, force=force)
-            self._invalidate_cache(project)
+        if not registry_content:
+            return MCPToolResult(success=False, message="Could not read registry")
 
-            return MCPToolResult(
-                success=True,
-                message=f"Deleted feature: {feature.title}",
-                data={"feature_id": feature_id},
-            )
-        except ValueError as e:
-            return MCPToolResult(success=False, message=str(e))
+        registry_data = json.loads(registry_content)
+
+        if feature_id not in registry_data.get("features", {}):
+            return MCPToolResult(success=False, message=f"Feature not found: {feature_id}")
+
+        feature_data = registry_data["features"][feature_id]
+        feature_title = feature_data.get("title", feature_id)
+
+        # Safety checks (unless force=True)
+        if not force:
+            if feature_data.get("children"):
+                return MCPToolResult(
+                    success=False,
+                    message=f"Feature has children. Use force=True to delete.",
+                )
+            if feature_data.get("status") == "in-progress":
+                return MCPToolResult(
+                    success=False,
+                    message="Feature is in-progress. Use force=True to delete.",
+                )
+
+        # Remove the feature
+        del registry_data["features"][feature_id]
+
+        # Write updated registry
+        updated_json = json.dumps(registry_data, indent=2)
+        self.remote_executor.write_file(registry_path, updated_json)
+        self._invalidate_cache(project)
+
+        return MCPToolResult(
+            success=True,
+            message=f"Deleted feature: {feature_title}",
+            data={"feature_id": feature_id},
+        )
 
     def _init_project(
         self,
