@@ -81,7 +81,7 @@ struct ConnectionStatusBadge: View {
     }
 }
 
-/// iOS Roadmap view - aligned with macOS MissionControlV2 workflow
+/// iOS Roadmap view - aligned with macOS WorkspaceView
 struct iOSRoadmapView: View {
     @Environment(AppState.self) private var appState
     @State private var showingQuickCapture = false

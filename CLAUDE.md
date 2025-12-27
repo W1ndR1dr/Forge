@@ -8,6 +8,23 @@ FlowForge is an AI-assisted parallel development orchestrator. It enables system
 
 **Philosophy**: Built for "vibecoders" - developers who work extensively with AI assistance but may not be Git experts. FlowForge handles the complexity so users can focus on features.
 
+## Terminology
+
+These terms have specific meanings in FlowForge:
+
+| Term | Meaning |
+|------|---------|
+| **Capture** | Quick, low-friction idea input (VibeInput, Quick Capture FAB) |
+| **Crystallize** | Refine vague idea → clear spec via chat (BrainstormChatView) |
+| **Ship** | Merge feature to main (not deploy - deploy is separate) |
+| **Worktree** | Isolated git working directory for parallel feature dev |
+| **Idea** | Unrefined feature, lives in IDEA INBOX |
+| **Planned** | Crystallized idea, ready to implement |
+
+Avoid:
+- "V2" suffixes → just use the clean name
+- Overly thematic names → prefer descriptive names
+
 ## Build Commands
 
 ```bash
@@ -237,7 +254,7 @@ FlowForgeApp/
 ├── App/                     # macOS entry point
 ├── App-iOS/                 # iOS companion app entry point
 ├── Models/                  # Feature, AppState, Project, Proposal
-├── Views/                   # ContentView, Kanban/, MissionControl/, etc.
+├── Views/                   # ContentView, Kanban/, WorkspaceView, etc.
 ├── Services/                # APIClient, CLIBridge, WebSocketClient
 ├── Shared/                  # Cross-platform code
 └── Design/                  # Design system

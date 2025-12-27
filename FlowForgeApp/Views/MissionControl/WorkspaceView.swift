@@ -3,8 +3,8 @@ import SwiftUI
 import AppKit
 #endif
 
-// MARK: - Mission Control V2
-// The redesigned shipping-focused dashboard
+// MARK: - Workspace View
+// The main shipping-focused dashboard
 //
 // Influenced by: The Legendary Design Panel
 // - Jony Ive: Every pixel feels considered
@@ -13,7 +13,7 @@ import AppKit
 // - Edward Tufte: Show the data, eliminate chartjunk
 // - Mike Matas: Physics-based, magical moments
 
-struct MissionControlV2: View {
+struct WorkspaceView: View {
     @Environment(AppState.self) private var appState
 
     @State private var vibeText = ""
@@ -147,14 +147,14 @@ struct MissionControlV2: View {
                 .sectionHeaderStyle()
 
             if let feature = activeFeature {
-                ActiveMissionCardV2(
+                ActiveWorkCard(
                     feature: feature,
                     onShip: {
                         shipFeature(feature)
                     }
                 )
             } else if let nextFeature = upNextFeatures.first {
-                StartMissionCardV2(
+                StartWorkCard(
                     feature: nextFeature,
                     onStart: {
                         Task {
@@ -249,7 +249,7 @@ struct MissionControlV2: View {
             }
 
             ForEach(blockedFeatures) { feature in
-                BlockedCardV2(feature: feature)
+                BlockedCard(feature: feature)
             }
         }
         .padding(Spacing.standard)
@@ -308,7 +308,7 @@ struct MissionControlV2: View {
 
             VStack(spacing: Spacing.small) {
                 ForEach(ideaFeatures) { feature in
-                    IdeaCardV2(
+                    IdeaCard(
                         feature: feature,
                         onCrystallize: {
                             crystallizeIdea(feature)
@@ -352,7 +352,7 @@ struct MissionControlV2: View {
                     GridItem(.flexible())
                 ], spacing: Spacing.small) {
                     ForEach(shippedThisWeek) { feature in
-                        ShippedCardV2(feature: feature)
+                        ShippedCard(feature: feature)
                     }
                 }
             }
@@ -403,9 +403,9 @@ struct MissionControlV2: View {
     }
 }
 
-// MARK: - Active Mission Card V2
+// MARK: - Active Work Card
 
-struct ActiveMissionCardV2: View {
+struct ActiveWorkCard: View {
     @Environment(AppState.self) private var appState
     let feature: Feature
     let onShip: () -> Void
@@ -653,9 +653,9 @@ struct GitStatusBadge: View {
     }
 }
 
-// MARK: - Start Mission Card V2
+// MARK: - Start Work Card
 
-struct StartMissionCardV2: View {
+struct StartWorkCard: View {
     @Environment(AppState.self) private var appState
     let feature: Feature
     let onStart: () -> Void
@@ -907,9 +907,9 @@ struct IdeaQueueCard: View {
     }
 }
 
-// MARK: - Up Next Card V2 (Legacy)
+// MARK: - Up Next Card
 
-struct UpNextCardV2: View {
+struct UpNextCard: View {
     let feature: Feature
     let position: Int
     var isSafeToParallelize: Bool = true  // Default to safe for vibecoders
@@ -1012,9 +1012,9 @@ struct ParallelSafeBadge: View {
     }
 }
 
-// MARK: - Blocked Card V2
+// MARK: - Blocked Card
 
-struct BlockedCardV2: View {
+struct BlockedCard: View {
     let feature: Feature
 
     var body: some View {
@@ -1034,9 +1034,9 @@ struct BlockedCardV2: View {
     }
 }
 
-// MARK: - Shipped Card V2
+// MARK: - Shipped Card
 
-struct ShippedCardV2: View {
+struct ShippedCard: View {
     let feature: Feature
 
     @State private var isVisible = false
@@ -1063,9 +1063,9 @@ struct ShippedCardV2: View {
     }
 }
 
-// MARK: - Idea Card V2
+// MARK: - Idea Card
 
-struct IdeaCardV2: View {
+struct IdeaCard: View {
     let feature: Feature
     let onCrystallize: () -> Void
     let onArchive: () -> Void
@@ -1256,16 +1256,16 @@ struct OfflineBanner: View {
 // MARK: - Preview
 
 #if DEBUG
-struct MissionControlV2Preview: View {
+struct WorkspaceViewPreview: View {
     var body: some View {
-        MissionControlV2()
+        WorkspaceView()
             .environment(AppState.preview)
             .frame(width: 800, height: 900)
     }
 }
 
 #Preview {
-    MissionControlV2Preview()
+    WorkspaceViewPreview()
 }
 
 extension AppState {

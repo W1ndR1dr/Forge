@@ -14,7 +14,7 @@ struct ContentView: View {
                 .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 300)
         } detail: {
             ZStack {
-                // Main content - Mission Control only
+                // Main content - Workspace view
                 VStack(spacing: 0) {
                     // Connection status bar at top
                     if !appState.isConnectedToServer {
@@ -35,7 +35,7 @@ struct ContentView: View {
                             if project.needsInitialization {
                                 UninitializedProjectView(project: project)
                             } else {
-                                MissionControlV2()
+                                WorkspaceView()
                             }
                         } else {
                             VStack(spacing: Spacing.standard) {
