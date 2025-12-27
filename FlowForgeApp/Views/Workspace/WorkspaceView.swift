@@ -145,7 +145,7 @@ struct WorkspaceView: View {
             // Header
             HStack {
                 HStack(spacing: Spacing.small) {
-                    Image(systemName: "hammer.fill")
+                    Image(systemName: "lightbulb.max.fill")
                         .foregroundColor(Accent.success)
                     Text("IDEAS IN PROGRESS")
                         .sectionHeaderStyle()
@@ -169,7 +169,8 @@ struct WorkspaceView: View {
                                 Task { await appState.startFeature(feature) }
                             },
                             onRefine: { refineFeature(feature) },
-                            onDelete: { archiveIdea(feature) }
+                            onDelete: { archiveIdea(feature) },
+                            onDemote: { demoteToInbox(feature) }
                         )
                     }
                 }
@@ -365,6 +366,12 @@ struct WorkspaceView: View {
     private func promoteToIdea(_ feature: Feature) {
         Task {
             await appState.refineFeature(feature)
+        }
+    }
+
+    private func demoteToInbox(_ feature: Feature) {
+        Task {
+            await appState.demoteFeature(feature)
         }
     }
 
@@ -1217,13 +1224,21 @@ struct ShippedCard: View {
 // MARK: - Idea Feature Card (Ready to Build)
 
 struct IdeaFeatureCard: View {
+    @Environment(AppState.self) private var appState
     let feature: Feature
     let onStart: () -> Void
     let onRefine: () -> Void
     let onDelete: () -> Void
+    let onDemote: () -> Void
 
     @State private var isHovered = false
     @State private var showingDeleteConfirmation = false
+    @State private var showingPromptPreview = false
+    @State private var isLoadingPrompt = false
+    @State private var promptText: String?
+    @State private var promptError: String?
+
+    private let apiClient = APIClient()
 
     var body: some View {
         HStack(spacing: Spacing.medium) {
@@ -1252,6 +1267,15 @@ struct IdeaFeatureCard: View {
             // Actions
             if isHovered {
                 HStack(spacing: Spacing.small) {
+                    // Demote back to inbox
+                    Button(action: onDemote) {
+                        Image(systemName: "arrow.uturn.backward")
+                            .font(Typography.caption)
+                            .foregroundColor(.orange)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Send back to inbox")
+
                     Button(action: { showingDeleteConfirmation = true }) {
                         Image(systemName: "trash")
                             .font(Typography.caption)
@@ -1259,6 +1283,16 @@ struct IdeaFeatureCard: View {
                     }
                     .buttonStyle(.plain)
                     .help("Delete feature")
+
+                    // Preview prompt
+                    Button(action: { Task { await loadPromptPreview() } }) {
+                        Image(systemName: "doc.text.magnifyingglass")
+                            .font(Typography.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Preview implementation prompt")
+                    .disabled(isLoadingPrompt)
 
                     Button(action: onRefine) {
                         HStack(spacing: 4) {
@@ -1302,8 +1336,37 @@ struct IdeaFeatureCard: View {
         } message: {
             Text("Delete \"\(feature.title)\"? This cannot be undone.")
         }
+        .sheet(isPresented: $showingPromptPreview) {
+            PromptPreviewSheet(
+                featureTitle: feature.title,
+                prompt: promptText ?? "Failed to load prompt",
+                error: promptError,
+                onDismiss: { showingPromptPreview = false }
+            )
+        }
         .onHover { isHovered = $0 }
         .animation(SpringPreset.snappy, value: isHovered)
+    }
+
+    @MainActor
+    private func loadPromptPreview() async {
+        guard let project = appState.selectedProject else { return }
+
+        isLoadingPrompt = true
+        promptError = nil
+
+        do {
+            promptText = try await apiClient.getPrompt(
+                project: project.name,
+                featureId: feature.id
+            )
+            showingPromptPreview = true
+        } catch {
+            promptError = error.localizedDescription
+            showingPromptPreview = true
+        }
+
+        isLoadingPrompt = false
     }
 }
 

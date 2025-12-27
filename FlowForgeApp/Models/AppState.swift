@@ -876,6 +876,26 @@ class AppState {
         }
     }
 
+    /// Demote a feature from idea back to inbox
+    func demoteFeature(_ feature: Feature) async {
+        guard let project = selectedProject else { return }
+
+        do {
+            try await apiClient.updateFeature(
+                project: project.name,
+                featureId: feature.id,
+                status: "inbox"
+            )
+            // Update local state
+            if let index = features.firstIndex(where: { $0.id == feature.id }) {
+                features[index].status = .inbox
+            }
+            self.successMessage = "Back to inbox: \(feature.title)"
+        } catch {
+            self.errorMessage = "Failed to demote: \(error.localizedDescription)"
+        }
+    }
+
     /// Update a feature with refined spec details
     /// This is used when refining an existing inbox item through brainstorm chat
     func updateFeatureWithSpec(
