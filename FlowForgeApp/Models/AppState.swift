@@ -4,6 +4,29 @@ import Observation
 import UIKit
 #endif
 
+/// Sorting options for lists
+enum SortOrder: String, CaseIterable, Codable {
+    case recentlyUsed = "recently_used"
+    case alphabetical = "alphabetical"
+    case manual = "manual"
+
+    var displayName: String {
+        switch self {
+        case .recentlyUsed: return "Recent"
+        case .alphabetical: return "A-Z"
+        case .manual: return "Manual"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .recentlyUsed: return "clock"
+        case .alphabetical: return "textformat.abc"
+        case .manual: return "line.3.horizontal"
+        }
+    }
+}
+
 /// Connection state for offline-first architecture
 enum ConnectionState: Equatable {
     case connected              // Pi reachable, Mac online
@@ -68,6 +91,25 @@ class AppState {
     var showingProjectSetup = false
     var projectToInitialize: Project?
 
+    // Sorting preferences (persisted)
+    var projectSortOrder: SortOrder {
+        didSet { UserDefaults.standard.set(projectSortOrder.rawValue, forKey: "projectSortOrder") }
+    }
+    var ideaSortOrder: SortOrder {
+        didSet { UserDefaults.standard.set(ideaSortOrder.rawValue, forKey: "ideaSortOrder") }
+    }
+    var plannedSortOrder: SortOrder {
+        didSet { UserDefaults.standard.set(plannedSortOrder.rawValue, forKey: "plannedSortOrder") }
+    }
+
+    // Track when items were last accessed (for "recently used" sorting)
+    private var projectAccessTimes: [String: Date] = [:] {
+        didSet { saveAccessTimes() }
+    }
+    private var featureAccessTimes: [String: Date] = [:] {
+        didSet { saveAccessTimes() }
+    }
+
     // Offline caching
     private let featureCache = FeatureCache()
 
@@ -88,10 +130,110 @@ class AppState {
     #endif
 
     init() {
+        // Load sorting preferences from UserDefaults
+        if let raw = UserDefaults.standard.string(forKey: "projectSortOrder"),
+           let order = SortOrder(rawValue: raw) {
+            projectSortOrder = order
+        } else {
+            projectSortOrder = .recentlyUsed
+        }
+        if let raw = UserDefaults.standard.string(forKey: "ideaSortOrder"),
+           let order = SortOrder(rawValue: raw) {
+            ideaSortOrder = order
+        } else {
+            ideaSortOrder = .recentlyUsed
+        }
+        if let raw = UserDefaults.standard.string(forKey: "plannedSortOrder"),
+           let order = SortOrder(rawValue: raw) {
+            plannedSortOrder = order
+        } else {
+            plannedSortOrder = .recentlyUsed
+        }
+
+        // Load access times
+        loadAccessTimes()
+
         setupWebSocket()
         Task {
             await loadProjects()
             await refreshSystemStatus()
+        }
+    }
+
+    // MARK: - Access Time Tracking (for "recently used" sorting)
+
+    private func saveAccessTimes() {
+        if let data = try? JSONEncoder().encode(projectAccessTimes) {
+            UserDefaults.standard.set(data, forKey: "projectAccessTimes")
+        }
+        if let data = try? JSONEncoder().encode(featureAccessTimes) {
+            UserDefaults.standard.set(data, forKey: "featureAccessTimes")
+        }
+    }
+
+    private func loadAccessTimes() {
+        if let data = UserDefaults.standard.data(forKey: "projectAccessTimes"),
+           let times = try? JSONDecoder().decode([String: Date].self, from: data) {
+            projectAccessTimes = times
+        }
+        if let data = UserDefaults.standard.data(forKey: "featureAccessTimes"),
+           let times = try? JSONDecoder().decode([String: Date].self, from: data) {
+            featureAccessTimes = times
+        }
+    }
+
+    /// Mark a project as accessed (for recently used sorting)
+    func markProjectAccessed(_ project: Project) {
+        projectAccessTimes[project.id.uuidString] = Date()
+    }
+
+    /// Mark a feature as accessed (for recently used sorting)
+    func markFeatureAccessed(_ feature: Feature) {
+        featureAccessTimes[feature.id] = Date()
+    }
+
+    // MARK: - Sorted Lists
+
+    /// Projects sorted according to current preference
+    var sortedProjects: [Project] {
+        switch projectSortOrder {
+        case .recentlyUsed:
+            return projects.sorted { a, b in
+                let timeA = projectAccessTimes[a.id.uuidString] ?? .distantPast
+                let timeB = projectAccessTimes[b.id.uuidString] ?? .distantPast
+                return timeA > timeB
+            }
+        case .alphabetical:
+            return projects.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        case .manual:
+            return projects
+        }
+    }
+
+    /// Ideas sorted according to current preference
+    var sortedIdeas: [Feature] {
+        let ideas = features.filter { $0.status == .idea }
+        return sortFeatures(ideas, by: ideaSortOrder)
+    }
+
+    /// Planned features sorted according to current preference
+    var sortedPlannedFeatures: [Feature] {
+        let planned = features.filter { $0.status == .planned }
+        return sortFeatures(planned, by: plannedSortOrder)
+    }
+
+    private func sortFeatures(_ items: [Feature], by order: SortOrder) -> [Feature] {
+        switch order {
+        case .recentlyUsed:
+            return items.sorted { a, b in
+                let timeA = featureAccessTimes[a.id] ?? (a.createdAt ?? .distantPast)
+                let timeB = featureAccessTimes[b.id] ?? (b.createdAt ?? .distantPast)
+                return timeA > timeB
+            }
+        case .alphabetical:
+            return items.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+        case .manual:
+            return items
         }
     }
 

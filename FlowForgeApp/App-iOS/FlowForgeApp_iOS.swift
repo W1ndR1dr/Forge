@@ -81,7 +81,7 @@ struct ConnectionStatusBadge: View {
     }
 }
 
-/// iOS Roadmap view - aligned with macOS WorkspaceView
+/// iOS Roadmap view - Idea capture and crystallization only
 struct iOSRoadmapView: View {
     @Environment(AppState.self) private var appState
     @State private var showingQuickCapture = false
@@ -89,23 +89,15 @@ struct iOSRoadmapView: View {
     @State private var showingBrainstorm = false
     @State private var brainstormFeature: Feature?
 
-    // Computed properties matching macOS
+    // Ideas and planned features only - implementation happens on Mac
     private var ideaInboxFeatures: [Feature] {
         appState.features.filter { $0.status == .planned || $0.status == .idea }
-    }
-
-    private var inProgressFeatures: [Feature] {
-        appState.features.filter { $0.status == .inProgress || $0.status == .review }
-    }
-
-    private var shippedFeatures: [Feature] {
-        appState.features.filter { $0.status == .completed }
     }
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             List {
-                // IDEA INBOX - the queue of ideas waiting to be started
+                // IDEA INBOX - capture and refine ideas here
                 Section {
                     if ideaInboxFeatures.isEmpty {
                         HStack {
@@ -119,8 +111,7 @@ struct iOSRoadmapView: View {
                         ForEach(ideaInboxFeatures) { feature in
                             iOSIdeaCard(
                                 feature: feature,
-                                onRefine: { refineFeature(feature) },
-                                onCopyPrompt: { copyPrompt(for: feature) }
+                                onRefine: { refineFeature(feature) }
                             )
                         }
                     }
@@ -130,29 +121,9 @@ struct iOSRoadmapView: View {
                             .foregroundColor(.yellow)
                         Text("IDEA INBOX")
                     }
-                }
-
-                // IN PROGRESS - active work
-                if !inProgressFeatures.isEmpty {
-                    Section("IN PROGRESS") {
-                        ForEach(inProgressFeatures) { feature in
-                            iOSFeatureRow(feature: feature)
-                        }
-                    }
-                }
-
-                // SHIPPED - completed features
-                if !shippedFeatures.isEmpty {
-                    Section("SHIPPED") {
-                        ForEach(shippedFeatures.prefix(5)) { feature in
-                            iOSFeatureRow(feature: feature)
-                        }
-                        if shippedFeatures.count > 5 {
-                            Text("+ \(shippedFeatures.count - 5) more")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
-                        }
-                    }
+                } footer: {
+                    Text("Capture ideas here, refine with Claude, then build on Mac.")
+                        .font(.caption)
                 }
             }
             .listStyle(.insetGrouped)
@@ -210,34 +181,12 @@ struct iOSRoadmapView: View {
         brainstormFeature = feature
         showingBrainstorm = true
     }
-
-    private func copyPrompt(for feature: Feature) {
-        guard let projectName = appState.selectedProject?.name else { return }
-
-        Task {
-            do {
-                let apiClient = APIClient()
-                let prompt = try await apiClient.getPrompt(
-                    project: projectName,
-                    featureId: feature.id
-                )
-                await MainActor.run {
-                    UIPasteboard.general.string = prompt
-                }
-            } catch {
-                print("Failed to copy prompt: \(error)")
-            }
-        }
-    }
 }
 
 /// Card for ideas in the IDEA INBOX
 struct iOSIdeaCard: View {
     let feature: Feature
     var onRefine: () -> Void
-    var onCopyPrompt: () -> Void
-
-    @State private var showCopiedToast = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -253,26 +202,25 @@ struct iOSIdeaCard: View {
                     .lineLimit(2)
             }
 
-            // Action buttons
-            HStack(spacing: 12) {
+            // Status badge
+            HStack {
+                Text(feature.status == .idea ? "Needs refinement" : "Ready to build")
+                    .font(.caption2)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(feature.status == .idea ? Color.orange.opacity(0.2) : Color.green.opacity(0.2))
+                    .foregroundColor(feature.status == .idea ? .orange : .green)
+                    .clipShape(Capsule())
+
+                Spacer()
+
+                // Refine button
                 Button {
                     onRefine()
                 } label: {
                     Label("Refine", systemImage: "sparkles")
                 }
                 .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-
-                Button {
-                    onCopyPrompt()
-                    showCopiedToast = true
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                        showCopiedToast = false
-                    }
-                } label: {
-                    Label(showCopiedToast ? "Copied!" : "Copy Prompt", systemImage: showCopiedToast ? "checkmark" : "doc.on.clipboard")
-                }
-                .buttonStyle(.bordered)
                 .controlSize(.small)
             }
         }
@@ -346,219 +294,7 @@ struct QuickCaptureSheet: View {
     }
 }
 
-/// iOS Feature row for list view
-struct iOSFeatureRow: View {
-    @Environment(AppState.self) private var appState
-    let feature: Feature
 
-    @State private var showingDetail = false
-    @State private var isCopying = false
-    @State private var showCopiedAlert = false
-
-    var body: some View {
-        Button {
-            showingDetail = true
-        } label: {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(feature.title)
-                        .font(.headline)
-                        .foregroundColor(.primary)
-
-                    Spacer()
-
-                    if let complexity = feature.complexity {
-                        Text(complexity.displayName)
-                            .font(.caption2)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(complexityColor(complexity).opacity(0.2))
-                            .foregroundColor(complexityColor(complexity))
-                            .clipShape(Capsule())
-                    }
-                }
-
-                if let description = feature.description, !description.isEmpty {
-                    Text(description)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .lineLimit(2)
-                }
-
-                if !feature.tags.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 4) {
-                            ForEach(feature.tags, id: \.self) { tag in
-                                Text(tag)
-                                    .font(.caption2)
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(Color.accentColor.opacity(0.2))
-                                    .clipShape(Capsule())
-                            }
-                        }
-                    }
-                }
-            }
-            .padding(.vertical, 4)
-        }
-        .buttonStyle(.plain)
-        .swipeActions(edge: .trailing) {
-            Button {
-                copyPrompt()
-            } label: {
-                Label("Copy Prompt", systemImage: "doc.on.clipboard")
-            }
-            .tint(.blue)
-        }
-        .sheet(isPresented: $showingDetail) {
-            iOSFeatureDetailView(feature: feature)
-        }
-        .alert("Copied!", isPresented: $showCopiedAlert) {
-            Button("OK") {}
-        } message: {
-            Text("Implementation prompt copied to clipboard")
-        }
-    }
-
-    private func complexityColor(_ complexity: Complexity) -> Color {
-        switch complexity {
-        case .small: return .green
-        case .medium: return .orange
-        case .large: return .red
-        case .epic: return .purple
-        }
-    }
-
-    private func copyPrompt() {
-        guard let projectName = appState.selectedProject?.name else { return }
-        isCopying = true
-
-        Task {
-            do {
-                let apiClient = APIClient()
-                let prompt = try await apiClient.getPrompt(
-                    project: projectName,
-                    featureId: feature.id
-                )
-
-                await MainActor.run {
-                    PlatformPasteboard.copy(prompt)
-                    isCopying = false
-                    showCopiedAlert = true
-                }
-            } catch {
-                await MainActor.run {
-                    isCopying = false
-                    print("Failed to copy prompt: \(error)")
-                }
-            }
-        }
-    }
-}
-
-/// iOS Feature detail view
-struct iOSFeatureDetailView: View {
-    @Environment(AppState.self) private var appState
-    @Environment(\.dismiss) private var dismiss
-    let feature: Feature
-
-    @State private var showCopiedAlert = false
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section("Details") {
-                    LabeledContent("ID", value: feature.id)
-                    LabeledContent("Status", value: feature.status.displayName)
-                    if let complexity = feature.complexity {
-                        LabeledContent("Complexity", value: complexity.displayName)
-                    }
-                    if let branch = feature.branch {
-                        LabeledContent("Branch", value: branch)
-                    }
-                }
-
-                if let description = feature.description, !description.isEmpty {
-                    Section("Description") {
-                        Text(description)
-                    }
-                }
-
-                if !feature.tags.isEmpty {
-                    Section("Tags") {
-                        FlowLayout(spacing: 8) {
-                            ForEach(feature.tags, id: \.self) { tag in
-                                Text(tag)
-                                    .font(.caption)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 6)
-                                    .background(Color.accentColor.opacity(0.2))
-                                    .clipShape(Capsule())
-                            }
-                        }
-                    }
-                }
-
-                Section("Actions") {
-                    Button {
-                        copyPrompt()
-                    } label: {
-                        Label("Copy Implementation Prompt", systemImage: "doc.on.clipboard")
-                    }
-
-                    Button {
-                        Task {
-                            await appState.updateFeatureStatus(feature, to: .inProgress)
-                            dismiss()
-                        }
-                    } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Label("Mark as In Progress", systemImage: "flag.fill")
-                            Text("Worktree created on Mac")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    .disabled(feature.status == .inProgress)
-                }
-            }
-            .navigationTitle(feature.title)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
-        }
-        .alert("Copied!", isPresented: $showCopiedAlert) {
-            Button("OK") {}
-        } message: {
-            Text("Implementation prompt copied to clipboard")
-        }
-    }
-
-    private func copyPrompt() {
-        guard let projectName = appState.selectedProject?.name else { return }
-
-        Task {
-            do {
-                let apiClient = APIClient()
-                let prompt = try await apiClient.getPrompt(
-                    project: projectName,
-                    featureId: feature.id
-                )
-
-                await MainActor.run {
-                    PlatformPasteboard.copy(prompt)
-                    showCopiedAlert = true
-                }
-            } catch {
-                print("Failed to copy prompt: \(error)")
-            }
-        }
-    }
-}
 
 /// Brainstorm view - real-time chat with Claude (aligned with macOS)
 struct BrainstormInputView: View {
@@ -578,179 +314,6 @@ struct BrainstormInputView: View {
                 systemImage: "folder.badge.questionmark",
                 description: Text("Select a project in Settings first.")
             )
-        }
-    }
-}
-
-/// iOS-adapted proposal review sheet
-struct iOSProposalReviewSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    @Binding var proposals: [Proposal]
-    let projectName: String
-    let onComplete: ([Proposal]) -> Void
-
-    @State private var isSubmitting = false
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    ForEach($proposals) { $proposal in
-                        iOSProposalRow(proposal: $proposal)
-                    }
-                } header: {
-                    Text("\(proposals.count) proposal(s)")
-                } footer: {
-                    HStack {
-                        Text("\(approvedCount) approved")
-                            .foregroundColor(.green)
-                        Text("•")
-                        Text("\(declinedCount) declined")
-                            .foregroundColor(.red)
-                        Text("•")
-                        Text("\(pendingCount) pending")
-                            .foregroundColor(.secondary)
-                    }
-                    .font(.caption)
-                }
-            }
-            .navigationTitle("Review Proposals")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button {
-                        submitApproved()
-                    } label: {
-                        if isSubmitting {
-                            ProgressView()
-                        } else {
-                            Text("Add \(approvedCount)")
-                        }
-                    }
-                    .disabled(approvedCount == 0 || isSubmitting)
-                }
-            }
-        }
-    }
-
-    private var approvedCount: Int {
-        proposals.filter { $0.status == .approved }.count
-    }
-
-    private var declinedCount: Int {
-        proposals.filter { $0.status == .declined }.count
-    }
-
-    private var pendingCount: Int {
-        proposals.filter { $0.status == .pending }.count
-    }
-
-    private func submitApproved() {
-        isSubmitting = true
-        onComplete(proposals)
-        dismiss()
-    }
-}
-
-/// Single proposal row for iOS
-struct iOSProposalRow: View {
-    @Binding var proposal: Proposal
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(proposal.title)
-                    .font(.headline)
-                    .strikethrough(proposal.status == .declined)
-
-                Spacer()
-
-                StatusPill(status: proposal.status)
-            }
-
-            Text(proposal.description)
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .lineLimit(2)
-
-            HStack(spacing: 8) {
-                Text("P\(proposal.priority)")
-                    .font(.caption2)
-                    .fontWeight(.bold)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(priorityColor.opacity(0.2))
-                    .foregroundColor(priorityColor)
-                    .clipShape(Capsule())
-
-                Text(proposal.complexity.capitalized)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-            }
-
-            // Action buttons
-            if proposal.status == .pending {
-                HStack(spacing: 12) {
-                    Button("Approve") {
-                        proposal.status = .approved
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.green)
-                    .controlSize(.small)
-
-                    Button("Decline") {
-                        proposal.status = .declined
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(.red)
-                    .controlSize(.small)
-
-                    Button("Defer") {
-                        proposal.status = .deferred
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(.orange)
-                    .controlSize(.small)
-                }
-            }
-        }
-        .padding(.vertical, 4)
-    }
-
-    private var priorityColor: Color {
-        switch proposal.priority {
-        case 1: return .red
-        case 2: return .orange
-        case 3: return .yellow
-        default: return .blue
-        }
-    }
-}
-
-/// Status pill for proposals
-struct StatusPill: View {
-    let status: ProposalStatus
-
-    var body: some View {
-        Text(status.displayName)
-            .font(.caption2)
-            .fontWeight(.medium)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(statusColor.opacity(0.2))
-            .foregroundColor(statusColor)
-            .clipShape(Capsule())
-    }
-
-    private var statusColor: Color {
-        switch status {
-        case .pending: return .gray
-        case .approved: return .green
-        case .declined: return .red
-        case .deferred: return .orange
         }
     }
 }

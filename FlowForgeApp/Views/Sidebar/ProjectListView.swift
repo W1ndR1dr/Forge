@@ -4,10 +4,13 @@ struct ProjectListView: View {
     @Environment(AppState.self) private var appState
 
     var body: some View {
-        List(appState.projects, selection: Binding(
+        @Bindable var state = appState
+
+        List(appState.sortedProjects, selection: Binding(
             get: { appState.selectedProject },
             set: { newProject in
                 if let project = newProject {
+                    appState.markProjectAccessed(project)
                     Task {
                         await appState.selectProject(project)
                     }
@@ -19,6 +22,10 @@ struct ProjectListView: View {
         }
         .navigationTitle("Projects")
         .toolbar {
+            ToolbarItem(placement: .automatic) {
+                SortPicker(selection: $state.projectSortOrder)
+                    .help("Sort projects")
+            }
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     Task {

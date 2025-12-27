@@ -28,13 +28,13 @@ struct WorkspaceView: View {
     }
 
     private var ideaFeatures: [Feature] {
-        // Raw ideas that need crystallization
-        appState.features.filter { $0.status == .idea }
+        // Raw ideas that need crystallization (sorted)
+        appState.sortedIdeas
     }
 
     private var plannedFeatures: [Feature] {
-        // Crystallized features ready to build
-        appState.features.filter { $0.status == .planned }
+        // Crystallized features ready to build (sorted)
+        appState.sortedPlannedFeatures
     }
 
     private var slotsRemaining: Int {
@@ -146,7 +146,9 @@ struct WorkspaceView: View {
     // MARK: - Ready to Build Section (Planned/Crystallized)
 
     private var readyToBuildSection: some View {
-        VStack(alignment: .leading, spacing: Spacing.medium) {
+        @Bindable var state = appState
+
+        return VStack(alignment: .leading, spacing: Spacing.medium) {
             // Header
             HStack {
                 HStack(spacing: Spacing.small) {
@@ -160,6 +162,8 @@ struct WorkspaceView: View {
                     .badgeStyle(color: Accent.success)
 
                 Spacer()
+
+                SortPicker(selection: $state.plannedSortOrder)
             }
 
             // Planned features
@@ -186,7 +190,9 @@ struct WorkspaceView: View {
     // MARK: - Idea Inbox Section (Raw Ideas)
 
     private var ideaInboxSection: some View {
-        VStack(alignment: .leading, spacing: Spacing.medium) {
+        @Bindable var state = appState
+
+        return VStack(alignment: .leading, spacing: Spacing.medium) {
             // Header
             HStack {
                 HStack(spacing: Spacing.small) {
@@ -202,6 +208,8 @@ struct WorkspaceView: View {
                 }
 
                 Spacer()
+
+                SortPicker(selection: $state.ideaSortOrder)
             }
 
             // Ideas
@@ -226,7 +234,7 @@ struct WorkspaceView: View {
                             IdeaCard(
                                 feature: feature,
                                 onCrystallize: { refineFeature(feature) },
-                                onArchive: { /* TODO: Archive */ }
+                                onDelete: { archiveIdea(feature) }
                             )
                         }
                     }
@@ -1239,9 +1247,10 @@ struct PlannedFeatureCard: View {
 struct IdeaCard: View {
     let feature: Feature
     let onCrystallize: () -> Void
-    let onArchive: () -> Void
+    let onDelete: () -> Void
 
     @State private var isHovered = false
+    @State private var showingDeleteConfirmation = false
 
     var body: some View {
         HStack(spacing: Spacing.medium) {
@@ -1275,14 +1284,14 @@ struct IdeaCard: View {
                     .buttonStyle(.plain)
                     .help("Refine this idea into a shippable feature")
 
-                    Button(action: onArchive) {
-                        Image(systemName: "archivebox")
+                    Button(action: { showingDeleteConfirmation = true }) {
+                        Image(systemName: "trash")
                             .font(Typography.caption)
                             .padding(Spacing.micro)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(Accent.danger)
                     }
                     .buttonStyle(.plain)
-                    .help("Archive this idea")
+                    .help("Delete this idea")
                 }
                 .transition(.opacity)
             }
@@ -1292,6 +1301,18 @@ struct IdeaCard: View {
         .cornerRadius(CornerRadius.medium)
         .onHover { isHovered = $0 }
         .animation(SpringPreset.snappy, value: isHovered)
+        .confirmationDialog(
+            "Delete Idea?",
+            isPresented: $showingDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                onDelete()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Delete \"\(feature.title)\"? This cannot be undone.")
+        }
     }
 }
 

@@ -149,32 +149,19 @@ if [[ -n "$PYTHON_CHANGED" ]] || [[ "$FORCE" == true ]]; then
     echo -e "${BLUE}🍓 Updating Pi server...${NC}"
     echo "─────────────────────────────────────"
 
-    # Check if Pi is reachable
+    # Pi is the ONLY server in this architecture (no local server)
+    # Check if Pi is reachable and update it
     if ssh -o ConnectTimeout=5 brian@raspberrypi "echo ok" &>/dev/null; then
         ssh brian@raspberrypi "cd ~/flowforge && git pull && sudo systemctl restart flowforge"
         sleep 2
         if curl -s --connect-timeout 5 http://raspberrypi:8081/health > /dev/null; then
             echo -e "${GREEN}✅ Pi server updated and restarted${NC}"
         else
-            echo -e "${YELLOW}⚠️  Pi server may not have started${NC}"
+            echo -e "${YELLOW}⚠️  Pi server may not have started - check with: ssh brian@raspberrypi 'sudo journalctl -u flowforge -n 20'${NC}"
         fi
     else
-        echo -e "${YELLOW}⚠️  Pi not reachable - skipping Pi update${NC}"
-    fi
-
-    # Also restart local server if running
-    echo ""
-    echo -e "${BLUE}🔄 Restarting local server...${NC}"
-    pkill -f "forge-server" 2>/dev/null || true
-    sleep 1
-    cd "$PROJECT_DIR"
-    source .venv/bin/activate
-    FLOWFORGE_PROJECTS_PATH=/Users/Brian/Projects/Active FLOWFORGE_PORT=8081 nohup forge-server > /tmp/flowforge-server.log 2>&1 &
-    sleep 2
-    if curl -s http://localhost:8081/health > /dev/null; then
-        echo -e "${GREEN}✅ Local server restarted${NC}"
-    else
-        echo -e "${YELLOW}⚠️  Local server may not have started - check /tmp/flowforge-server.log${NC}"
+        echo -e "${YELLOW}⚠️  Pi not reachable - skipping server update${NC}"
+        echo "   Make sure Pi is on and connected to Tailscale"
     fi
 fi
 

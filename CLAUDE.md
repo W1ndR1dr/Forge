@@ -221,21 +221,27 @@ refactor(registry): Simplify dependency tracking
 
 The SwiftUI macOS app lives in `FlowForgeApp/`. Uses XcodeGen to manage the Xcode project.
 
-### Server (required for full features)
+### Server (Pi-Only Architecture)
 
-The app connects to the FlowForge server for worktrees, prompts, git operations, etc.
+The FlowForge server **always runs on the Raspberry Pi**, not locally on Mac. The Mac/iOS apps connect via Tailscale.
 
-```bash
-# Start the server (run in background or separate terminal)
-cd /Users/Brian/Projects/Active/FlowForge
-source .venv/bin/activate
-FLOWFORGE_PROJECTS_PATH=/Users/Brian/Projects/Active FLOWFORGE_PORT=8081 forge-server
-
-# Or as one-liner to start in background:
-cd /Users/Brian/Projects/Active/FlowForge && source .venv/bin/activate && FLOWFORGE_PROJECTS_PATH=/Users/Brian/Projects/Active FLOWFORGE_PORT=8081 forge-server &
+```
+iPhone/Mac App → Tailscale → Pi Server (port 8081) → SSH → Mac (git/worktrees)
 ```
 
-The app auto-connects to `http://localhost:8081`. When migrating to Pi, just update `PlatformConfig.swift` with the Tailscale hostname.
+**Server management:**
+```bash
+# Check server status
+ssh brian@raspberrypi "sudo systemctl status flowforge"
+
+# View logs
+ssh brian@raspberrypi "sudo journalctl -u flowforge -f"
+
+# Restart server
+ssh brian@raspberrypi "sudo systemctl restart flowforge"
+```
+
+The apps connect to `http://raspberrypi:8081` (configured in `PlatformConfig.swift`).
 
 ### Deploy Everything (when user says "ship it", "deploy", "update all the things", etc.)
 
@@ -249,7 +255,7 @@ This is the **primary deploy command**. It automatically:
 1. Checks which platforms have changes (macOS, iOS, or both)
 2. Builds and installs macOS app to `/Applications`
 3. Uploads iOS to TestFlight with auto-versioning
-4. Restarts the FlowForge server if Python files changed
+4. Updates Pi and restarts server if Python files changed (via SSH)
 5. Commits and pushes version bumps
 
 ### Manual Build (for quick macOS-only iteration)
