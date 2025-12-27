@@ -170,19 +170,38 @@ class BrainstormAgent:
         )
 
         full_response = []
+        timeout_seconds = 120  # 2 minute timeout for large prompts
 
-        # Read stdout in chunks for streaming effect
-        while True:
-            chunk = await process.stdout.read(100)  # Small chunks for responsiveness
-            if not chunk:
-                break
+        try:
+            # Read stdout in chunks for streaming effect
+            start_time = asyncio.get_event_loop().time()
+            while True:
+                try:
+                    chunk = await asyncio.wait_for(
+                        process.stdout.read(100),
+                        timeout=30  # 30 sec timeout per chunk (allows for slow starts)
+                    )
+                except asyncio.TimeoutError:
+                    # Check total time
+                    elapsed = asyncio.get_event_loop().time() - start_time
+                    if elapsed > timeout_seconds:
+                        yield "\n\n[Timeout - Claude is taking too long. Try a shorter prompt.]"
+                        process.kill()
+                        break
+                    continue  # Keep waiting for next chunk
 
-            text = chunk.decode("utf-8", errors="replace")
-            full_response.append(text)
-            yield text
+                if not chunk:
+                    break
 
-        # Wait for process to complete
-        await process.wait()
+                text = chunk.decode("utf-8", errors="replace")
+                full_response.append(text)
+                yield text
+
+            # Wait for process to complete
+            await asyncio.wait_for(process.wait(), timeout=10)
+        except asyncio.TimeoutError:
+            yield "\n\n[Process timeout - killing Claude CLI]"
+            process.kill()
 
         # Check stderr for errors
         stderr = await process.stderr.read()
