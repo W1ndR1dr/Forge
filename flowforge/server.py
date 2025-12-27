@@ -1838,8 +1838,42 @@ async def websocket_endpoint(websocket: WebSocket, project: str):
 # =============================================================================
 
 
-# Store active brainstorm sessions (project -> BrainstormAgent)
+# Store active brainstorm sessions
+# Key: "project" for general brainstorm, "project:feature_id" for crystallization
 brainstorm_sessions: dict = {}
+
+
+def _get_session_key(project: str, feature_id: Optional[str] = None) -> str:
+    """Get the session key for a brainstorm session."""
+    if feature_id:
+        return f"{project}:{feature_id}"
+    return project
+
+
+def _load_feature_history(project_path: Path, feature_id: str) -> list[dict]:
+    """Load crystallization history from a feature's extensions."""
+    try:
+        registry = FeatureRegistry.load(project_path)
+        feature = registry.get_feature(feature_id)
+        if feature and feature.extensions:
+            return feature.extensions.get("crystallization_history", [])
+    except Exception:
+        pass
+    return []
+
+
+def _save_feature_history(project_path: Path, feature_id: str, messages: list[dict]) -> None:
+    """Save crystallization history to a feature's extensions."""
+    try:
+        registry = FeatureRegistry.load(project_path)
+        feature = registry.get_feature(feature_id)
+        if feature:
+            if feature.extensions is None:
+                feature.extensions = {}
+            feature.extensions["crystallization_history"] = messages
+            registry.update_feature(feature_id, extensions=feature.extensions)
+    except Exception as e:
+        print(f"Failed to save crystallization history: {e}")
 
 
 @app.websocket("/ws/{project}/brainstorm")
@@ -1894,14 +1928,17 @@ async def brainstorm_websocket(websocket: WebSocket, project: str):
         refining_feature_id = None
         refining_feature_title = None
 
-        if project not in brainstorm_sessions:
-            brainstorm_sessions[project] = BrainstormAgent(
+        # Use project-only key for initial connection (before init message)
+        session_key = _get_session_key(project)
+
+        if session_key not in brainstorm_sessions:
+            brainstorm_sessions[session_key] = BrainstormAgent(
                 project_name=project,
                 project_context=project_context,
                 existing_features=existing_features,
             )
 
-        agent = brainstorm_sessions[project]
+        agent = brainstorm_sessions[session_key]
 
         # Send session state on connect
         await websocket.send_json({
@@ -1917,16 +1954,25 @@ async def brainstorm_websocket(websocket: WebSocket, project: str):
                 refining_feature_id = data.get("feature_id")
                 refining_feature_title = data.get("feature_title")
 
-                # Create a fresh session with feature context
-                brainstorm_sessions[project] = BrainstormAgent(
+                # Update session key for feature-specific crystallization
+                session_key = _get_session_key(project, refining_feature_id)
+
+                # Load existing history from the feature record
+                existing_history = []
+                if refining_feature_id:
+                    existing_history = _load_feature_history(project_path, refining_feature_id)
+
+                # Create session with feature context (and existing history)
+                brainstorm_sessions[session_key] = BrainstormAgent(
                     project_name=project,
                     project_context=project_context,
                     existing_features=existing_features,
-                    existing_feature_title=refining_feature_title,  # Crystallization mode
+                    existing_feature_title=refining_feature_title,
+                    existing_history=existing_history,  # Resume from saved history
                 )
-                agent = brainstorm_sessions[project]
+                agent = brainstorm_sessions[session_key]
 
-                # Acknowledge init
+                # Acknowledge init with full state (including resumed history)
                 await websocket.send_json({
                     "type": "session_state",
                     "state": agent.get_conversation_state(),
@@ -1952,6 +1998,14 @@ async def brainstorm_websocket(websocket: WebSocket, project: str):
                     "content": "".join(full_response),
                 })
 
+                # Persist history if crystallizing a feature
+                if refining_feature_id:
+                    messages = [
+                        {"role": msg.role, "content": msg.content}
+                        for msg in agent.session.messages
+                    ]
+                    _save_feature_history(project_path, refining_feature_id, messages)
+
                 # Check if spec is ready
                 if agent.is_spec_ready():
                     spec = agent.get_spec()
@@ -1962,12 +2016,18 @@ async def brainstorm_websocket(websocket: WebSocket, project: str):
 
             elif data.get("type") == "reset":
                 # Reset the session
-                brainstorm_sessions[project] = BrainstormAgent(
+                brainstorm_sessions[session_key] = BrainstormAgent(
                     project_name=project,
                     project_context=project_context,
                     existing_features=existing_features,
+                    existing_feature_title=refining_feature_title if refining_feature_id else None,
                 )
-                agent = brainstorm_sessions[project]
+                agent = brainstorm_sessions[session_key]
+
+                # Clear persisted history if crystallizing
+                if refining_feature_id:
+                    _save_feature_history(project_path, refining_feature_id, [])
+
                 await websocket.send_json({
                     "type": "session_reset",
                     "state": agent.get_conversation_state(),

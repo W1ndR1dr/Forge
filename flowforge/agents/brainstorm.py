@@ -98,6 +98,7 @@ class BrainstormAgent:
         project_context: str = "",
         existing_features: Optional[list[str]] = None,
         existing_feature_title: Optional[str] = None,  # For crystallization mode
+        existing_history: Optional[list[dict]] = None,  # Resume from saved history
     ):
         self.session = BrainstormSession(
             project_name=project_name,
@@ -105,6 +106,13 @@ class BrainstormAgent:
             existing_features=existing_features or [],
             existing_feature_title=existing_feature_title,
         )
+
+        # Load existing history if provided (resume crystallization)
+        if existing_history:
+            for msg in existing_history:
+                self.session.messages.append(
+                    BrainstormMessage(role=msg["role"], content=msg["content"])
+                )
 
     async def send_message(
         self,
