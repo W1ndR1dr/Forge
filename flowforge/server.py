@@ -27,8 +27,6 @@ from .brainstorm import parse_proposals, Proposal, ProposalStatus, check_shippab
 from .prompt_builder import PromptBuilder
 from .registry import FeatureRegistry
 from .intelligence import IntelligenceEngine
-from .feature_analyzer import FeatureAnalyzer, Complexity as AnalyzerComplexity, ExpertDomain as AnalyzerDomain
-from .expert_router import ExpertRouter, ExpertDomain as RouterDomain
 from .cache import CacheManager, get_cache_manager
 from .sync import SyncManager, get_sync_manager
 from .remote import RemoteExecutor
@@ -326,24 +324,6 @@ async def get_system_status():
             "pending_operations": 0,
             "cache_stats": cache_manager.get_cache_stats() if cache_manager else None,
         }
-
-
-@app.post("/api/system/sync")
-async def force_sync():
-    """Force an immediate sync with Mac."""
-    if not sync_manager:
-        return {"success": True, "message": "Running in local mode, no sync needed"}
-
-    if not sync_manager.mac_online:
-        raise HTTPException(status_code=503, detail="Mac is offline")
-
-    result = await sync_manager.sync_all_projects()
-    return {
-        "success": result.success,
-        "message": result.message,
-        "synced_projects": result.synced_projects,
-        "failed_operations": result.failed_operations,
-    }
 
 
 # =============================================================================
@@ -1267,135 +1247,6 @@ async def scope_check(request: ScopeCheckRequest):
     return result
 
 
-# =============================================================================
-# Feature Intelligence Endpoints (AGI-pilled analysis)
-# =============================================================================
-
-
-class AnalyzeFeatureRequest(BaseModel):
-    """Request to analyze a feature with AI."""
-    title: str
-    description: str = ""
-
-
-@app.post("/api/{project}/analyze-feature")
-async def analyze_feature(project: str, request: AnalyzeFeatureRequest):
-    """
-    Analyze a feature using the AGI-pilled feature analyzer.
-
-    Returns complete intelligence about scope, complexity, expert needs,
-    and shippability.
-    """
-    config = get_config()
-    project_path = config["projects_base"] / project
-
-    if not (project_path / ".flowforge").exists():
-        raise HTTPException(status_code=404, detail=f"Project not found: {project}")
-
-    # Get existing features for context
-    registry = FeatureRegistry.load(project_path)
-    existing = [f.title for f in registry.list_features() if f.status.value == "in-progress"]
-
-    # Run the analyzer
-    analyzer = FeatureAnalyzer(project_path)
-    intelligence = analyzer.analyze_feature(
-        title=request.title,
-        description=request.description,
-        existing_features=existing,
-    )
-
-    return {
-        "title": intelligence.title,
-        "description": intelligence.description,
-        "complexity": intelligence.complexity.value,
-        "estimated_hours": intelligence.estimated_hours,
-        "confidence": intelligence.confidence,
-        "files_affected": intelligence.files_affected,
-        "foundation_score": intelligence.foundation_score,
-        "foundation_reasoning": intelligence.foundation_reasoning,
-        "parallelizable": intelligence.parallelizable,
-        "parallel_conflicts": intelligence.parallel_conflicts,
-        "needs_expert": intelligence.needs_expert,
-        "expert_domain": intelligence.expert_domain.value,
-        "expert_reasoning": intelligence.expert_reasoning,
-        "shippable_today": intelligence.shippable_today,
-        "scope_creep_detected": intelligence.scope_creep_detected,
-        "scope_creep_warning": intelligence.scope_creep_warning,
-        "suggested_breakdown": intelligence.suggested_breakdown,
-        "suggested_tags": intelligence.suggested_tags,
-    }
-
-
-class QuickScopeRequest(BaseModel):
-    """Request for quick (local) scope check."""
-    text: str
-
-
-@app.post("/api/quick-scope")
-async def quick_scope_check(request: QuickScopeRequest):
-    """
-    Quick, local-only scope check for as-you-type feedback.
-
-    This runs instantly without calling Claude, for the VibeInput component.
-    """
-    # Use a dummy analyzer (doesn't need project context for quick check)
-    analyzer = FeatureAnalyzer(Path("."))
-    result = analyzer.quick_scope_check(request.text)
-    return result
-
-
-@app.get("/api/experts")
-async def list_experts():
-    """List all available expert personas."""
-    return {
-        "experts": ExpertRouter.list_all_experts()
-    }
-
-
-@app.get("/api/experts/{domain}")
-async def get_experts_for_domain(domain: str):
-    """Get expert personas for a specific domain."""
-    try:
-        domain_enum = RouterDomain(domain)
-    except ValueError:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid domain. Valid domains: {[d.value for d in RouterDomain]}"
-        )
-
-    experts = ExpertRouter.get_experts_for_domain(domain_enum)
-    return {
-        "domain": domain,
-        "experts": [
-            {
-                "name": e.name,
-                "title": e.title,
-                "philosophy": e.philosophy,
-                "key_principles": e.key_principles,
-            }
-            for e in experts
-        ]
-    }
-
-
-@app.get("/api/experts/panel/design")
-async def get_design_panel():
-    """Get the legendary design panel from the UI/UX consultation."""
-    panel = ExpertRouter.get_design_panel()
-    return {
-        "panel_name": "The Legendary Design Panel",
-        "experts": [
-            {
-                "name": e.name,
-                "title": e.title,
-                "philosophy": e.philosophy,
-                "key_principles": e.key_principles,
-            }
-            for e in panel
-        ]
-    }
-
-
 class ApproveProposalsRequest(BaseModel):
     """Request to approve and add proposals to registry."""
     proposals: list[dict]  # List of proposal dicts to add
@@ -1780,29 +1631,6 @@ async def health():
         "status": "healthy",
         "projects_base": str(config["projects_base"]),
         "remote_host": config["remote_host"],
-    }
-
-
-@app.get("/api/{project}/pending")
-async def get_pending_operations(project: str):
-    """Get pending operations for a project (queued while Mac was offline)."""
-    if not cache_manager:
-        return {"pending": [], "count": 0}
-
-    pending = cache_manager.get_pending_operations(project)
-    return {
-        "pending": [
-            {
-                "id": op.id,
-                "operation": op.operation,
-                "payload": json.loads(op.payload_json),
-                "created_at": op.created_at,
-                "status": op.status,
-                "error": op.error_message,
-            }
-            for op in pending
-        ],
-        "count": len(pending),
     }
 
 

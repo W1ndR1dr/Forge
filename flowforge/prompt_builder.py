@@ -289,6 +289,7 @@ class PromptBuilder:
         sections.append("1. Commit your changes with conventional commit format")
         sections.append("2. Ensure any new files follow existing patterns")
         sections.append("3. Test manually on the target device/environment")
+        sections.append(f"4. Run `forge stop {context.feature.id}` to mark ready for review")
         sections.append("")
         sections.append("Ask clarifying questions if the specification is unclear before proceeding.")
         sections.append("")

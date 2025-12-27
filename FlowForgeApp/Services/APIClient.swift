@@ -272,46 +272,6 @@ actor APIClient {
         return try await get(url: url)
     }
 
-    /// Force an immediate sync with Mac
-    func forceSync() async throws -> SyncResult {
-        let url = baseURL.appendingPathComponent("api/system/sync")
-        return try await post(url: url, body: [:])
-    }
-
-    /// Get pending operations for a project (queued while Mac was offline)
-    func getPendingOperations(project: String) async throws -> PendingOperationsResponse {
-        let url = baseURL.appendingPathComponent("api/\(project)/pending")
-        return try await get(url: url)
-    }
-
-    // MARK: - Feature Intelligence
-
-    /// Analyze a feature for complexity, scope, expert suggestions
-    func analyzeFeature(project: String, title: String, description: String?) async throws -> FeatureAnalysis {
-        let url = baseURL.appendingPathComponent("api/\(project)/analyze-feature")
-        var body: [String: Any] = ["title": title]
-        if let description = description {
-            body["description"] = description
-        }
-        return try await post(url: url, body: body)
-    }
-
-    /// Quick scope check (local, no AI) for as-you-type feedback
-    func quickScopeCheck(text: String) async throws -> QuickScopeResponse {
-        let url = baseURL.appendingPathComponent("api/quick-scope")
-        let body = ["text": text]
-        return try await post(url: url, body: body)
-    }
-
-    /// Get available experts for a domain
-    func getExperts(domain: String? = nil) async throws -> ExpertsResponse {
-        var url = baseURL.appendingPathComponent("api/experts")
-        if let domain = domain {
-            url = url.appendingPathComponent(domain)
-        }
-        return try await get(url: url)
-    }
-
     // MARK: - Private HTTP Methods
 
     private func get<T: Decodable>(url: URL) async throws -> T {
@@ -513,64 +473,7 @@ struct MergeResponse: Decodable {
     }
 }
 
-// MARK: - Feature Intelligence Types
-
-struct FeatureAnalysis: Decodable {
-    let complexity: String
-    let estimatedHours: Double?
-    let confidence: Double?
-    let foundationScore: Int?
-    let expertDomain: String?
-    let scopeCreepWarnings: [String]?
-    let suggestedBreakdown: [String]?
-    let filesAffected: [String]?
-    let shippableToday: Bool?
-
-    enum CodingKeys: String, CodingKey {
-        case complexity
-        case estimatedHours = "estimated_hours"
-        case confidence
-        case foundationScore = "foundation_score"
-        case expertDomain = "expert_domain"
-        case scopeCreepWarnings = "scope_creep_warnings"
-        case suggestedBreakdown = "suggested_breakdown"
-        case filesAffected = "files_affected"
-        case shippableToday = "shippable_today"
-    }
-}
-
-struct QuickScopeResponse: Decodable {
-    let hasWarnings: Bool
-    let warnings: [String]
-    let suggestedComplexity: String?
-
-    enum CodingKeys: String, CodingKey {
-        case hasWarnings = "has_warnings"
-        case warnings
-        case suggestedComplexity = "suggested_complexity"
-    }
-}
-
-struct ExpertsResponse: Decodable {
-    let experts: [Expert]
-}
-
-struct Expert: Decodable, Identifiable {
-    var id: String { name }
-    let name: String
-    let domain: String
-    let philosophy: String
-    let keyPrinciples: [String]?
-
-    enum CodingKeys: String, CodingKey {
-        case name
-        case domain
-        case philosophy
-        case keyPrinciples = "key_principles"
-    }
-}
-
-// MARK: - System Status Types (Offline-First)
+// MARK: - System Status Types
 
 /// System status including Mac connectivity and cache state
 struct SystemStatus: Decodable {
@@ -602,43 +505,6 @@ struct CacheStats: Decodable {
         case pendingOperations = "pending_operations"
         case dbPath = "db_path"
         case dbSizeKb = "db_size_kb"
-    }
-}
-
-struct SyncResult: Decodable {
-    let success: Bool
-    let message: String
-    let syncedProjects: [String]
-    let failedOperations: [Int]
-
-    enum CodingKeys: String, CodingKey {
-        case success
-        case message
-        case syncedProjects = "synced_projects"
-        case failedOperations = "failed_operations"
-    }
-}
-
-struct PendingOperationsResponse: Decodable {
-    let pending: [PendingOperation]
-    let count: Int
-}
-
-struct PendingOperation: Decodable, Identifiable {
-    let id: Int
-    let operation: String
-    let payload: [String: String]?
-    let createdAt: String
-    let status: String
-    let error: String?
-
-    enum CodingKeys: String, CodingKey {
-        case id
-        case operation
-        case payload
-        case createdAt = "created_at"
-        case status
-        case error
     }
 }
 

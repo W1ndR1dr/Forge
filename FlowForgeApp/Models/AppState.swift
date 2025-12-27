@@ -260,25 +260,6 @@ class AppState {
         }
     }
 
-    /// Force sync with Mac (when Mac comes back online)
-    func forceSyncWithMac() async -> Bool {
-        do {
-            let result = try await apiClient.forceSync()
-            if result.success {
-                showSuccess("Synced \(result.syncedProjects.count) project(s)")
-                await refreshSystemStatus()
-                await loadFeatures()
-                return true
-            } else {
-                errorMessage = result.message
-                return false
-            }
-        } catch {
-            errorMessage = "Sync failed: \(error.localizedDescription)"
-            return false
-        }
-    }
-
     /// Check if Mac is required for an operation (and show friendly error if offline)
     func requiresMac(for operation: String) -> Bool {
         guard connectionState.macOnline else {
