@@ -60,6 +60,10 @@ class AppState {
     // Shipping stats (Wave 4.4)
     var shippingStats: ShippingStats = ShippingStats()
 
+    // Health check state (registry vs git drift detection)
+    var projectHealth: ProjectHealth?
+    var isReconciling = false
+
     // Project initialization state
     var showingProjectSetup = false
     var projectToInitialize: Project?
@@ -493,9 +497,10 @@ class AppState {
             self.features = features
             self.isLoading = false
 
-            // Load shipping stats in background
+            // Load stats and health check in background
             Task {
                 await loadShippingStats()
+                await checkProjectHealth()
             }
 
         } catch {
@@ -880,6 +885,50 @@ class AppState {
         } catch {
             // Silent fail - stats are optional
             print("Failed to load shipping stats: \(error)")
+        }
+    }
+
+    // MARK: - Health Check (Registry vs Git Drift)
+
+    /// Check project health - compare registry to git state
+    func checkProjectHealth() async {
+        guard let project = selectedProject else { return }
+
+        do {
+            let health = try await apiClient.getProjectHealth(project: project.name)
+            self.projectHealth = health
+        } catch {
+            // Silent fail - health check is optional info
+            print("Failed to check project health: \(error)")
+            self.projectHealth = nil
+        }
+    }
+
+    /// Get health issue for a specific feature (if any)
+    func healthIssue(for featureId: String) -> HealthIssue? {
+        return projectHealth?.issues.first { $0.featureId == featureId }
+    }
+
+    /// Reconcile a feature - fix drift between registry and git
+    func reconcileFeature(featureId: String, action: String) async {
+        guard let project = selectedProject else { return }
+
+        isReconciling = true
+        defer { isReconciling = false }
+
+        do {
+            try await apiClient.reconcileFeature(
+                project: project.name,
+                featureId: featureId,
+                action: action
+            )
+            showSuccess("Feature reconciled!")
+
+            // Refresh data
+            await loadFeatures()
+            await checkProjectHealth()
+        } catch {
+            errorMessage = "Failed to reconcile: \(error.localizedDescription)"
         }
     }
 

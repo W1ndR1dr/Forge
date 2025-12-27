@@ -14,6 +14,7 @@ final class BrainstormClient: ObservableObject {
     @Published private(set) var messages: [BrainstormMessage] = []
     @Published private(set) var currentSpec: CrystallizedSpec?
     @Published private(set) var lastError: Error?
+    @Published private(set) var streamingText: String = ""  // Current streaming response (debounced)
 
     // MARK: - Types
 
@@ -56,6 +57,8 @@ final class BrainstormClient: ObservableObject {
     private var currentFeatureTitle: String?
     private let session: URLSession
     private var currentAssistantMessage: BrainstormMessage?
+    private var streamingBuffer: String = ""  // Accumulates chunks before publishing
+    private var lastStreamUpdate: Date = .distantPast
 
     // MARK: - Callbacks
 
@@ -113,6 +116,11 @@ final class BrainstormClient: ObservableObject {
     /// Send a message to Claude
     func sendMessage(_ content: String) {
         guard !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+
+        // Reset streaming state
+        streamingBuffer = ""
+        streamingText = ""
+        lastStreamUpdate = .distantPast
 
         // Add user message
         let userMessage = BrainstormMessage(
@@ -253,13 +261,26 @@ final class BrainstormClient: ObservableObject {
             }
 
         case "chunk":
-            // Streaming chunk from Claude
+            // Streaming chunk - accumulate in buffer, throttle UI updates
             if let content = json["content"] as? String {
-                appendToCurrentResponse(content)
+                streamingBuffer += content
+
+                // Only update UI every 50ms to prevent performance issues
+                let now = Date()
+                if now.timeIntervalSince(lastStreamUpdate) > 0.05 {
+                    streamingText = streamingBuffer
+                    lastStreamUpdate = now
+                }
             }
 
         case "message_complete":
-            // Full message received
+            // Full message received - finalize with complete content
+            let finalContent = json["content"] as? String ?? streamingBuffer
+            if !finalContent.isEmpty {
+                finalizeStreamingMessage(finalContent)
+            }
+            streamingBuffer = ""
+            streamingText = ""
             isTyping = false
             currentAssistantMessage = nil
 
@@ -288,16 +309,14 @@ final class BrainstormClient: ObservableObject {
         }
     }
 
-    private func appendToCurrentResponse(_ chunk: String) {
+    private func finalizeStreamingMessage(_ content: String) {
         guard var message = currentAssistantMessage else { return }
+        message.content = content
 
-        message.content += chunk
-
-        // Update the message in the array
+        // Update the message in the array (single update, not per-chunk)
         if let index = messages.lastIndex(where: { $0.id == message.id }) {
             messages[index] = message
         }
-        currentAssistantMessage = message
     }
 
     private func handleError(_ error: Error) {

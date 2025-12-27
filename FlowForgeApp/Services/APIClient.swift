@@ -215,6 +215,21 @@ actor APIClient {
         return try await get(url: url)
     }
 
+    // MARK: - Health Check (Registry vs Git State)
+
+    /// Get project health - check for drift between registry and git state
+    func getProjectHealth(project: String) async throws -> ProjectHealth {
+        let url = baseURL.appendingPathComponent("api/\(project)/health")
+        return try await get(url: url)
+    }
+
+    /// Reconcile a feature - fix drift between registry and git
+    func reconcileFeature(project: String, featureId: String, action: String) async throws {
+        let url = baseURL.appendingPathComponent("api/\(project)/features/\(featureId)/reconcile")
+        let body = ["action": action]
+        let _: ReconcileResponse = try await post(url: url, body: body)
+    }
+
     // MARK: - Merge Operations
 
     /// Check if a feature can be merged safely
@@ -625,4 +640,48 @@ struct PendingOperation: Decodable, Identifiable {
         case status
         case error
     }
+}
+
+// MARK: - Health Check Types
+
+/// Project health status - compares registry to git state
+struct ProjectHealth: Decodable {
+    let healthy: Bool
+    let issues: [HealthIssue]
+    let checkedFeatures: Int
+    let checkedWorktrees: Int
+
+    enum CodingKeys: String, CodingKey {
+        case healthy
+        case issues
+        case checkedFeatures = "checked_features"
+        case checkedWorktrees = "checked_worktrees"
+    }
+}
+
+/// A single health issue detected
+struct HealthIssue: Decodable, Identifiable {
+    var id: String { featureId ?? worktreePath ?? UUID().uuidString }
+
+    let featureId: String?
+    let type: String  // "branch_merged", "missing_worktree", "orphan_worktree"
+    let message: String
+    let canAutoFix: Bool
+    let fixAction: String?
+    let worktreePath: String?
+
+    enum CodingKeys: String, CodingKey {
+        case featureId = "feature_id"
+        case type
+        case message
+        case canAutoFix = "can_auto_fix"
+        case fixAction = "fix_action"
+        case worktreePath = "worktree_path"
+    }
+}
+
+/// Response from reconciling a feature
+private struct ReconcileResponse: Decodable {
+    let success: Bool
+    let message: String?
 }

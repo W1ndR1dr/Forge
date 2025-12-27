@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Optional
 import json
 import os
+import subprocess
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -632,6 +633,175 @@ async def get_github_health(project: str):
     report.similar_repos = similar
 
     return report.to_dict()
+
+
+# =============================================================================
+# Project Health Check (Registry vs Git State)
+# =============================================================================
+
+
+@app.get("/api/{project}/health")
+async def get_project_health(project: str):
+    """
+    Check project health - compare registry state to actual git state.
+
+    Detects:
+    - Branches merged but feature status != completed
+    - Worktree paths set but directories missing
+    - Orphan worktrees (exist but not tracked in registry)
+
+    Returns:
+    - healthy: bool
+    - issues: list of detected problems with suggested fixes
+    """
+    config = get_config()
+    project_path = config["projects_base"] / project
+
+    if not (project_path / ".flowforge").exists():
+        raise HTTPException(status_code=404, detail=f"Project not found: {project}")
+
+    registry = FeatureRegistry.load(project_path)
+    worktree_manager = WorktreeManager(project_path)
+
+    issues = []
+
+    # Get merged branches
+    try:
+        result = subprocess.run(
+            ["git", "branch", "--merged", "main"],
+            cwd=project_path,
+            capture_output=True,
+            text=True,
+        )
+        merged_branches = set()
+        if result.returncode == 0:
+            for line in result.stdout.strip().split("\n"):
+                branch = line.strip().lstrip("* ")
+                if branch and branch != "main":
+                    merged_branches.add(branch)
+    except Exception:
+        merged_branches = set()
+
+    # Get all worktrees
+    try:
+        worktrees = worktree_manager.list_worktrees()
+        worktree_paths = {wt.path for wt in worktrees if not wt.is_main}
+    except Exception:
+        worktree_paths = set()
+
+    # Check 1: Branches merged but status != completed
+    from .registry import FeatureStatus
+    for feature in registry.list_features():
+        if feature.status in (FeatureStatus.IN_PROGRESS, FeatureStatus.REVIEW):
+            if feature.branch and feature.branch in merged_branches:
+                issues.append({
+                    "feature_id": feature.id,
+                    "type": "branch_merged",
+                    "message": f"'{feature.title}' branch is merged to main but status is {feature.status.value}",
+                    "can_auto_fix": True,
+                    "fix_action": "mark_completed",
+                })
+
+    # Check 2: Worktree path set but directory missing
+    for feature in registry.list_features():
+        if feature.worktree_path:
+            wt_path = project_path / feature.worktree_path
+            if not wt_path.exists():
+                issues.append({
+                    "feature_id": feature.id,
+                    "type": "missing_worktree",
+                    "message": f"'{feature.title}' has worktree path set but directory doesn't exist",
+                    "can_auto_fix": True,
+                    "fix_action": "clear_worktree",
+                })
+
+    # Check 3: Orphan worktrees (exist but not in registry)
+    registry_worktree_paths = set()
+    for feature in registry.list_features():
+        if feature.worktree_path:
+            registry_worktree_paths.add(project_path / feature.worktree_path)
+
+    for wt_path in worktree_paths:
+        if wt_path not in registry_worktree_paths:
+            # Check if it's in the .flowforge-worktrees directory
+            if ".flowforge-worktrees" in str(wt_path):
+                issues.append({
+                    "feature_id": None,
+                    "type": "orphan_worktree",
+                    "message": f"Orphan worktree at {wt_path.name} (not tracked by any feature)",
+                    "can_auto_fix": False,  # Ambiguous - user decides
+                    "fix_action": None,
+                    "worktree_path": str(wt_path),
+                })
+
+    return {
+        "healthy": len(issues) == 0,
+        "issues": issues,
+        "checked_features": len(list(registry.list_features())),
+        "checked_worktrees": len(worktree_paths),
+    }
+
+
+class ReconcileRequest(BaseModel):
+    """Request to reconcile a feature's state."""
+    action: str  # "mark_completed", "clear_worktree"
+
+
+@app.post("/api/{project}/features/{feature_id}/reconcile")
+async def reconcile_feature(project: str, feature_id: str, request: ReconcileRequest):
+    """
+    Reconcile a feature's state - fix drift between registry and git.
+
+    Actions:
+    - mark_completed: Update status to completed, clear worktree/branch
+    - clear_worktree: Just clear the worktree_path field
+    """
+    config = get_config()
+    project_path = config["projects_base"] / project
+
+    if not (project_path / ".flowforge").exists():
+        raise HTTPException(status_code=404, detail=f"Project not found: {project}")
+
+    registry = FeatureRegistry.load(project_path)
+    feature = registry.get_feature(feature_id)
+
+    if not feature:
+        raise HTTPException(status_code=404, detail=f"Feature not found: {feature_id}")
+
+    from .registry import FeatureStatus
+    from datetime import datetime
+
+    if request.action == "mark_completed":
+        # Mark as completed, clear git-related fields
+        registry.update_feature(
+            feature_id,
+            status=FeatureStatus.COMPLETED,
+            worktree_path=None,
+            completed_at=datetime.now().isoformat(),
+        )
+        # Broadcast update
+        await ws_manager.broadcast_feature_update(project, feature_id, "updated")
+        return {
+            "success": True,
+            "message": f"Marked '{feature.title}' as completed",
+            "new_status": "completed",
+        }
+
+    elif request.action == "clear_worktree":
+        # Just clear the worktree path
+        registry.update_feature(feature_id, worktree_path=None)
+        # Broadcast update
+        await ws_manager.broadcast_feature_update(project, feature_id, "updated")
+        return {
+            "success": True,
+            "message": f"Cleared worktree path for '{feature.title}'",
+        }
+
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown action: {request.action}. Valid: mark_completed, clear_worktree"
+        )
 
 
 class FixGitHubRequest(BaseModel):

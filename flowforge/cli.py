@@ -1089,6 +1089,121 @@ def status():
 
 
 @app.command()
+def health():
+    """
+    Check project health and report discrepancies.
+
+    Compares registry state with git state to identify:
+    - Branches merged but status != completed
+    - Worktree paths set but directories missing
+    - Orphan worktrees not tracked by any feature
+    """
+    import subprocess as sp
+
+    project_root, config, registry = get_context()
+    worktree_mgr = WorktreeManager(project_root, config.project.worktree_base)
+
+    issues = []
+
+    # Get merged branches
+    try:
+        result = sp.run(
+            ["git", "branch", "--merged", config.project.main_branch],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+        )
+        merged_branches = set()
+        if result.returncode == 0:
+            for line in result.stdout.strip().split("\n"):
+                branch = line.strip().lstrip("* ")
+                if branch and branch != config.project.main_branch:
+                    merged_branches.add(branch)
+    except Exception:
+        merged_branches = set()
+
+    # Get all worktrees
+    try:
+        worktrees = worktree_mgr.list_worktrees()
+        worktree_paths = {wt.path for wt in worktrees if not wt.is_main}
+    except Exception:
+        worktree_paths = set()
+
+    # Check 1: Branches merged but status != completed
+    for feature in registry.list_features():
+        if feature.status in (FeatureStatus.IN_PROGRESS, FeatureStatus.REVIEW):
+            if feature.branch and feature.branch in merged_branches:
+                issues.append({
+                    "feature": feature.title,
+                    "id": feature.id,
+                    "type": "branch_merged",
+                    "message": f"Branch merged to {config.project.main_branch} but status is {feature.status.value}",
+                    "fix": f"forge health --fix {feature.id}  (or: mark as completed manually)",
+                })
+
+    # Check 2: Worktree path set but directory missing
+    for feature in registry.list_features():
+        if feature.worktree_path:
+            wt_path = project_root / feature.worktree_path
+            if not wt_path.exists():
+                issues.append({
+                    "feature": feature.title,
+                    "id": feature.id,
+                    "type": "missing_worktree",
+                    "message": "Worktree path set but directory doesn't exist",
+                    "fix": "Registry has stale worktree_path - clear it or recreate worktree",
+                })
+
+    # Check 3: Orphan worktrees
+    registry_worktree_paths = set()
+    for feature in registry.list_features():
+        if feature.worktree_path:
+            registry_worktree_paths.add(project_root / feature.worktree_path)
+
+    for wt_path in worktree_paths:
+        if wt_path not in registry_worktree_paths:
+            if ".flowforge-worktrees" in str(wt_path):
+                issues.append({
+                    "feature": None,
+                    "id": None,
+                    "type": "orphan_worktree",
+                    "message": f"Orphan worktree at {wt_path.name}",
+                    "fix": f"git worktree remove {wt_path}  (if not needed)",
+                })
+
+    # Display results
+    if not issues:
+        console.print(Panel(
+            "[green]✅ All healthy![/green]\n\n"
+            f"Checked {len(list(registry.list_features()))} features, {len(worktree_paths)} worktrees.\n"
+            "Registry and git state are in sync.",
+            title="FlowForge Health",
+        ))
+    else:
+        console.print(Panel(
+            f"[yellow]⚠️  {len(issues)} issue{'s' if len(issues) > 1 else ''} found[/yellow]",
+            title="FlowForge Health",
+        ))
+
+        table = Table(show_header=True)
+        table.add_column("Type", style="dim")
+        table.add_column("Feature")
+        table.add_column("Issue")
+        table.add_column("Suggested Fix", style="dim")
+
+        for issue in issues:
+            table.add_row(
+                issue["type"],
+                issue["feature"] or "(orphan)",
+                issue["message"],
+                issue["fix"],
+            )
+
+        console.print(table)
+        console.print("\n[dim]Run the suggested fixes or ask Claude Code to help reconcile.[/dim]")
+
+
+@app.command()
 def version():
     """Show FlowForge version."""
     console.print(f"FlowForge v{__version__}")

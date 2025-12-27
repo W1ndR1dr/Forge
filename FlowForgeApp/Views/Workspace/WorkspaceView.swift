@@ -27,8 +27,13 @@ struct WorkspaceView: View {
             ?? appState.features.first { $0.status == .review }
     }
 
-    private var upNextFeatures: [Feature] {
-        // Show ALL planned features - ideas are unlimited, discipline comes at START
+    private var ideaFeatures: [Feature] {
+        // Raw ideas that need crystallization
+        appState.features.filter { $0.status == .idea }
+    }
+
+    private var plannedFeatures: [Feature] {
+        // Crystallized features ready to build
         appState.features.filter { $0.status == .planned }
     }
 
@@ -49,10 +54,6 @@ struct WorkspaceView: View {
         appState.features.filter { $0.status == .blocked }
     }
 
-    private var ideaFeatures: [Feature] {
-        appState.features.filter { $0.status == .idea }
-    }
-
     // MARK: - Body
 
     var body: some View {
@@ -70,19 +71,24 @@ struct WorkspaceView: View {
                         )
                     }
 
-                    // Level 0: The Vibe Input
+                    // Level 0: Capture - The Vibe Input
                     vibeInputSection
 
-                    // Level 1: Today's Mission (single focus)
+                    // Level 1: Raw Ideas - need crystallization
+                    ideaInboxSection
+
+                    // Level 2: Ready to Build - crystallized, pick one to start
+                    if !plannedFeatures.isEmpty {
+                        readyToBuildSection
+                    }
+
+                    // Level 3: Active Work - what you're building now
                     todaysMissionSection
 
                     // Active Workspaces (parallel development)
                     ActiveWorkspacesSection()
 
-                    // The Queue - where ideas live until you START them
-                    ideaQueueSection
-
-                    // Shipped This Week - motivation/streak
+                    // Level 4: Done - shipped features
                     shippedSection
                 }
                 .padding(Spacing.large)
@@ -152,7 +158,7 @@ struct WorkspaceView: View {
                         shipFeature(feature)
                     }
                 )
-            } else if let nextFeature = upNextFeatures.first {
+            } else if let nextFeature = plannedFeatures.first {
                 StartWorkCard(
                     feature: nextFeature,
                     onStart: {
@@ -171,7 +177,49 @@ struct WorkspaceView: View {
 
     // MARK: - Idea Queue Section (The One Queue)
 
-    private var ideaQueueSection: some View {
+    // MARK: - Ready to Build Section (Planned/Crystallized)
+
+    private var readyToBuildSection: some View {
+        VStack(alignment: .leading, spacing: Spacing.medium) {
+            // Header
+            HStack {
+                HStack(spacing: Spacing.small) {
+                    Image(systemName: "hammer.fill")
+                        .foregroundColor(Accent.success)
+                    Text("READY TO BUILD")
+                        .sectionHeaderStyle()
+                }
+
+                Text("\(plannedFeatures.count)")
+                    .badgeStyle(color: Accent.success)
+
+                Spacer()
+            }
+
+            // Planned features
+            ScrollView {
+                VStack(spacing: Spacing.small) {
+                    ForEach(plannedFeatures) { feature in
+                        PlannedFeatureCard(
+                            feature: feature,
+                            onStart: {
+                                Task { await appState.startFeature(feature) }
+                            },
+                            onRefine: { refineFeature(feature) }
+                        )
+                    }
+                }
+            }
+            .frame(maxHeight: 250)
+        }
+        .padding(Spacing.standard)
+        .background(Surface.elevated)
+        .cornerRadius(CornerRadius.large)
+    }
+
+    // MARK: - Idea Inbox Section (Raw Ideas)
+
+    private var ideaInboxSection: some View {
         VStack(alignment: .leading, spacing: Spacing.medium) {
             // Header
             HStack {
@@ -182,48 +230,42 @@ struct WorkspaceView: View {
                         .sectionHeaderStyle()
                 }
 
-                if !upNextFeatures.isEmpty {
-                    Text("\(upNextFeatures.count)")
+                if !ideaFeatures.isEmpty {
+                    Text("\(ideaFeatures.count)")
                         .badgeStyle(color: Accent.warning)
                 }
 
                 Spacer()
             }
 
-            // The queue
-            if upNextFeatures.isEmpty {
+            // Ideas
+            if ideaFeatures.isEmpty {
                 VStack(spacing: Spacing.medium) {
                     Image(systemName: "sparkles")
                         .font(.system(size: 32))
                         .foregroundColor(.secondary.opacity(0.5))
-                    Text("No ideas yet")
+                    Text("No rough ideas")
                         .font(Typography.body)
                         .foregroundColor(.secondary)
-                    Text("Type above to capture an idea")
+                    Text("Type above to capture an idea, then refine it")
                         .font(Typography.caption)
                         .foregroundColor(.secondary.opacity(0.7))
                 }
                 .frame(maxWidth: .infinity)
                 .padding(Spacing.xl)
             } else {
-                // Scrollable list of ideas
                 ScrollView {
                     VStack(spacing: Spacing.small) {
-                        ForEach(Array(upNextFeatures.enumerated()), id: \.element.id) { index, feature in
-                            IdeaQueueCard(
+                        ForEach(ideaFeatures) { feature in
+                            IdeaCard(
                                 feature: feature,
-                                position: index + 1,
-                                onRefine: { refineFeature(feature) },
-                                onStart: {
-                                    Task {
-                                        await appState.startFeature(feature)
-                                    }
-                                }
+                                onCrystallize: { refineFeature(feature) },
+                                onArchive: { /* TODO: Archive */ }
                             )
                         }
                     }
                 }
-                .frame(maxHeight: 300)  // Scrollable if many ideas
+                .frame(maxHeight: 200)
             }
         }
         .padding(Spacing.standard)
@@ -273,7 +315,7 @@ struct WorkspaceView: View {
                 }
 
                 VStack(spacing: Spacing.micro) {
-                    Text("\(upNextFeatures.count)")
+                    Text("\(plannedFeatures.count + ideaFeatures.count)")
                         .font(Typography.streakNumber)
                         .foregroundColor(StatusColor.inProgressFallback)
                     Text("queued")
@@ -284,43 +326,6 @@ struct WorkspaceView: View {
         }
         .padding(Spacing.standard)
         .background(Surface.elevated)
-        .cornerRadius(CornerRadius.large)
-    }
-
-    // MARK: - Idea Inbox Section
-
-    private var ideaInboxSection: some View {
-        VStack(alignment: .leading, spacing: Spacing.medium) {
-            HStack {
-                HStack(spacing: Spacing.small) {
-                    Image(systemName: "lightbulb.fill")
-                        .foregroundColor(.purple)
-                    Text("IDEA INBOX")
-                        .sectionHeaderStyle()
-                }
-
-                Text("\(ideaFeatures.count)")
-                    .badgeStyle(color: .purple)
-
-                Spacer()
-            }
-
-            VStack(spacing: Spacing.small) {
-                ForEach(ideaFeatures) { feature in
-                    IdeaCard(
-                        feature: feature,
-                        onCrystallize: {
-                            crystallizeIdea(feature)
-                        },
-                        onArchive: {
-                            archiveIdea(feature)
-                        }
-                    )
-                }
-            }
-        }
-        .padding(Spacing.standard)
-        .background(Color.purple.opacity(0.05))
         .cornerRadius(CornerRadius.large)
     }
 
@@ -551,6 +556,20 @@ struct ActiveWorkCard: View {
                 }
             }
 
+            // Drift warning banner (if health issue detected)
+            if let issue = appState.healthIssue(for: feature.id) {
+                DriftWarningBanner(
+                    issue: issue,
+                    featureTitle: feature.title,
+                    isReconciling: appState.isReconciling,
+                    onFix: { action in
+                        Task {
+                            await appState.reconcileFeature(featureId: feature.id, action: action)
+                        }
+                    }
+                )
+            }
+
             // SHIP IT button (Julie Zhuo - obvious next action)
             if feature.status == .review {
                 Button(action: onShip) {
@@ -648,6 +667,121 @@ struct GitStatusBadge: View {
         .padding(.vertical, 3)
         .background(color.opacity(0.15))
         .cornerRadius(4)
+    }
+}
+
+// MARK: - Drift Warning Banner
+
+/// Banner shown when registry state doesn't match git state
+struct DriftWarningBanner: View {
+    let issue: HealthIssue
+    let featureTitle: String
+    let isReconciling: Bool
+    let onFix: (String) -> Void
+
+    @State private var showingConfirmation = false
+
+    var body: some View {
+        HStack(spacing: Spacing.medium) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundColor(Accent.warning)
+                .font(.system(size: 16))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(issueMessage)
+                    .font(Typography.caption)
+                    .foregroundColor(.primary)
+
+                if issue.type == "branch_merged" {
+                    Text("Branch was merged outside FlowForge")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            Spacer()
+
+            if issue.canAutoFix, let action = issue.fixAction {
+                Button(action: { showingConfirmation = true }) {
+                    if isReconciling {
+                        ProgressView()
+                            .scaleEffect(0.6)
+                    } else {
+                        Text("Fix")
+                            .font(Typography.caption)
+                            .fontWeight(.medium)
+                    }
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, Spacing.medium)
+                .padding(.vertical, Spacing.small)
+                .background(Accent.warning.opacity(0.2))
+                .foregroundColor(Accent.warning)
+                .cornerRadius(CornerRadius.small)
+                .disabled(isReconciling)
+                .confirmationDialog(
+                    confirmationTitle,
+                    isPresented: $showingConfirmation,
+                    titleVisibility: .visible
+                ) {
+                    Button(confirmationButtonText) {
+                        onFix(action)
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text(confirmationMessage)
+                }
+            }
+        }
+        .padding(Spacing.medium)
+        .background(Accent.warning.opacity(0.1))
+        .cornerRadius(CornerRadius.medium)
+    }
+
+    private var issueMessage: String {
+        switch issue.type {
+        case "branch_merged":
+            return "Already shipped!"
+        case "missing_worktree":
+            return "Worktree missing"
+        case "orphan_worktree":
+            return "Orphan worktree"
+        default:
+            return issue.message
+        }
+    }
+
+    private var confirmationTitle: String {
+        switch issue.type {
+        case "branch_merged":
+            return "Mark as Completed?"
+        case "missing_worktree":
+            return "Clear Worktree Path?"
+        default:
+            return "Fix Issue?"
+        }
+    }
+
+    private var confirmationMessage: String {
+        switch issue.type {
+        case "branch_merged":
+            return "This will mark '\(featureTitle)' as completed since the branch is already merged."
+        case "missing_worktree":
+            return "This will clear the stale worktree path from '\(featureTitle)'."
+        default:
+            return "This will reconcile the registry with git state."
+        }
+    }
+
+    private var confirmationButtonText: String {
+        switch issue.type {
+        case "branch_merged":
+            return "Mark Completed"
+        case "missing_worktree":
+            return "Clear Path"
+        default:
+            return "Fix"
+        }
     }
 }
 
@@ -1058,6 +1192,79 @@ struct ShippedCard: View {
         .onAppear {
             isVisible = true
         }
+    }
+}
+
+// MARK: - Planned Feature Card (Ready to Build)
+
+struct PlannedFeatureCard: View {
+    let feature: Feature
+    let onStart: () -> Void
+    let onRefine: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        HStack(spacing: Spacing.medium) {
+            // Checkmark icon (crystallized)
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundColor(Accent.success)
+                .font(.system(size: 16))
+
+            // Title and description
+            VStack(alignment: .leading, spacing: 2) {
+                Text(feature.title)
+                    .font(Typography.body)
+                    .fontWeight(.medium)
+                    .lineLimit(1)
+
+                if let desc = feature.description, !desc.isEmpty {
+                    Text(desc.components(separatedBy: "\n").first ?? "")
+                        .font(Typography.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+            }
+
+            Spacer()
+
+            // Actions
+            if isHovered {
+                HStack(spacing: Spacing.small) {
+                    Button(action: onRefine) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "pencil")
+                            Text("Edit")
+                        }
+                        .font(Typography.caption)
+                        .padding(.horizontal, Spacing.small)
+                        .padding(.vertical, Spacing.micro)
+                        .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+
+                    Button(action: onStart) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "play.fill")
+                            Text("Start")
+                        }
+                        .font(Typography.caption)
+                        .padding(.horizontal, Spacing.medium)
+                        .padding(.vertical, Spacing.small)
+                        .background(Accent.success)
+                        .foregroundColor(.white)
+                        .cornerRadius(CornerRadius.small)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .transition(.opacity)
+            }
+        }
+        .padding(Spacing.medium)
+        .background(isHovered ? Accent.success.opacity(0.1) : Color.clear)
+        .cornerRadius(CornerRadius.medium)
+        .onHover { isHovered = $0 }
+        .animation(SpringPreset.snappy, value: isHovered)
     }
 }
 

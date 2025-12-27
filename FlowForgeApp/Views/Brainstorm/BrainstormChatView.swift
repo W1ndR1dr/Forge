@@ -38,8 +38,11 @@ struct BrainstormChatView: View {
                         if client.messages.isEmpty {
                             emptyStateView
                         } else {
-                            ForEach(client.messages) { message in
-                                MessageBubble(message: message)
+                            ForEach(Array(client.messages.enumerated()), id: \.element.id) { index, message in
+                                // Show streaming text for the last assistant message while typing
+                                let isLastAssistant = index == client.messages.count - 1 && message.role == .assistant
+                                let displayText = isLastAssistant && client.isTyping ? client.streamingText : message.content
+                                MessageBubble(message: message, displayText: displayText)
                                     .id(message.id)
                             }
                         }
@@ -297,6 +300,12 @@ struct BrainstormChatView: View {
 
 struct MessageBubble: View {
     let message: BrainstormClient.BrainstormMessage
+    var displayText: String? = nil  // Override text (for streaming)
+
+    private var textToShow: String {
+        let text = displayText ?? message.content
+        return text.isEmpty ? "..." : text
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: Spacing.medium) {
@@ -318,7 +327,7 @@ struct MessageBubble: View {
                 }
 
                 // Message content
-                Text(message.content.isEmpty ? "..." : message.content)
+                Text(textToShow)
                     .font(Typography.body)
                     .padding(Spacing.medium)
                     .background(message.role == .user ? Accent.primary : Surface.elevated)
