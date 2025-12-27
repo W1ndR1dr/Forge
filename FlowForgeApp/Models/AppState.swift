@@ -61,6 +61,8 @@ enum ConnectionState: Equatable {
 @MainActor
 @Observable
 class AppState {
+    private static let lastProjectKey = "FlowForge.lastSelectedProject"
+
     var projects: [Project] = []
     var selectedProject: Project?
     var features: [Feature] = []
@@ -354,13 +356,16 @@ class AppState {
         isLoading = true
         errorMessage = nil
 
-        // For now, we'll scan for FlowForge projects in common locations
-        // In the future, this could be enhanced to remember projects
         let projects = await discoverProjects()
         await MainActor.run {
             self.projects = projects
-            if let first = projects.first {
-                self.selectedProject = first
+
+            // Restore last selected project, or fall back to first
+            let lastProjectName = UserDefaults.standard.string(forKey: Self.lastProjectKey)
+            let projectToSelect = projects.first { $0.name == lastProjectName } ?? projects.first
+
+            if let project = projectToSelect {
+                self.selectedProject = project
                 Task {
                     await self.loadFeatures()
                 }
@@ -371,6 +376,9 @@ class AppState {
 
     func selectProject(_ project: Project) async {
         selectedProject = project
+
+        // Persist selection for next launch
+        UserDefaults.standard.set(project.name, forKey: Self.lastProjectKey)
 
         // Connect WebSocket for real-time updates
         if useAPIMode {
