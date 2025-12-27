@@ -800,17 +800,18 @@ async def add_feature(project: str, request: AddFeatureRequest):
     # Mac is online - proceed
     # If running in remote mode (Pi), execute via SSH to Mac
     if remote_executor:
-        # Build forge add command using venv's forge
+        # Build forge add command using venv's forge with -C for project dir
         config = get_config()
         project_path = Path(config["projects_base"]) / project
         forge_bin = project_path / ".venv" / "bin" / "forge"
-        cmd = [str(forge_bin), "add", request.title]
+        # Use -C to avoid cd quoting issues through SSH
+        cmd = [str(forge_bin), "-C", str(project_path), "add", request.title]
         if request.status:
             cmd.extend(["--status", request.status])
         if request.description:
             cmd.extend(["--description", request.description])
 
-        result = remote_executor.run_command(cmd, cwd=str(project_path))
+        result = remote_executor.run_command(cmd)  # No cwd needed with -C
         if not result.success:
             raise HTTPException(status_code=400, detail=result.stderr or "Failed to add feature")
 

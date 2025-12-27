@@ -320,8 +320,13 @@ def add(
     complexity: Optional[str] = typer.Option(None, "--complexity", "-c", help="small/medium/large/epic"),
     priority: Optional[int] = typer.Option(None, "--priority", help="Priority (1=highest)"),
     status: Optional[str] = typer.Option(None, "--status", help="Initial status (idea/planned)"),
+    project_dir: Optional[Path] = typer.Option(None, "-C", "--project-dir", help="Run as if forge was started in this directory"),
 ):
     """Add a new feature to the registry."""
+    # Support -C like git for remote execution
+    if project_dir:
+        import os
+        os.chdir(project_dir)
     project_root, config, registry = get_context()
 
     # Generate ID from title
