@@ -821,16 +821,10 @@ async def add_feature(project: str, request: AddFeatureRequest):
         # Broadcast update
         await ws_manager.broadcast_feature_update(project, feature_id, "created")
 
-        # Count planned features for response
-        registry = get_registry(project)
-        planned = [f for f in registry.features.values() if f.status.value == "planned"]
-
         return {
             "feature_id": feature_id,
             "title": request.title,
             "status": request.status or "idea",
-            "planned_count": len(planned),
-            "slots_remaining": MAX_PLANNED_FEATURES - len(planned),
             "mac_online": True,
             "queued": False,
         }
