@@ -10,6 +10,7 @@ Handles:
 """
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 import subprocess
@@ -296,7 +297,11 @@ class MergeOrchestrator:
                 )
 
         # Update registry
-        self.registry.update_feature(feature_id, status=FeatureStatus.COMPLETED)
+        self.registry.update_feature(
+            feature_id,
+            status=FeatureStatus.COMPLETED,
+            completed_at=datetime.now().isoformat(),
+        )
 
         # Clean up worktree and branch
         if auto_cleanup and feature.worktree_path:

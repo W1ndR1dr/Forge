@@ -720,7 +720,7 @@
       "created_at": "2025-12-26T16:36:07.092701",
       "updated_at": "2025-12-27T13:05:27.138584",
       "started_at": "2025-12-27T12:13:44.609653",
-      "completed_at": null,
+      "completed_at": "2025-12-27T13:17:14.744137",
       "spec_path": null,
       "prompt_path": "/Users/Brian/Projects/Active/FlowForge/.flowforge/prompts/add-hidereveal-for-sidebar-projects.md",
       "notes": null,
@@ -802,6 +802,30 @@
           }
         ]
       }
+    },
+    "context-phase-1-cleanup-done-removed-feature-analy": {
+      "id": "context-phase-1-cleanup-done-removed-feature-analy",
+      "title": "Context\nPhase 1 cleanup done (removed feature_analyzer.py, expert_router.py).\n\nCurrent problem: Recent commits made ALL operations require Mac via SSH. This breaks the core iOS use case - capturing ideas when MacBook is asleep.\n\nGoal\nRegistry lives on Pi. Git operations still need Mac.\n\nOperation\tWhere it runs\tMac required?\nList features\tPi (local read)\t\u274c\nAdd/update/delete feature\tPi (local write)\t\u274c\nStart feature (worktree)\tMac via SSH\t\u2705\nStop/merge feature\tMac via SSH\t\u2705\nStep 1: Evaluate Existing Code\n[CHANGED] Before writing new code, check if cache.py/sync.py can be repurposed or if simpler is better:\n\n# What do these files actually do?\nhead -60 flowforge/cache.py   # SQLite-based, might be overkill\nhead -60 flowforge/sync.py    # Background sync, conflict resolution\n\nDecision point:\n\nOption A: Repurpose existing cache.py (SQLite) - more robust, already written\nOption B: Simple JSON files on Pi (/var/flowforge/registries/{project}/registry.json) - simpler, matches Mac structure\nRecommend Option B for simplicity - just mirror the Mac's JSON structure on Pi.\n\nStep 2: Add Pi-Local Registry Storage\nConfig (environment variable):\n\nFLOWFORGE_REGISTRY_PATH=/var/flowforge/registries  # Pi-local path\n\nStructure:\n\n/var/flowforge/registries/\n\u251c\u2500\u2500 AirFit/\n\u2502   \u2514\u2500\u2500 registry.json\n\u251c\u2500\u2500 FlowForge/\n\u2502   \u2514\u2500\u2500 registry.json\n\u2514\u2500\u2500 ...\n\nStep 3: Update mcp_server.py\n[CHANGED] These functions currently use SSH for everything. Change to local reads/writes:\n\nFunction\tCurrent\tChange to\n_get_project_context()\tSSH read\tLocal read from Pi\n_add_feature()\tSSH (forge add)\tLocal write to Pi\n_update_feature()\tSSH read/write\tLocal read/write\n_delete_feature()\tSSH read/write\tLocal read/write\n_start_feature()\tSSH\tLocal registry update + SSH for git worktree\n_stop_feature()\tSSH\tLocal registry update + SSH for git commands\n_merge_feature()\tSSH\tLocal registry update + SSH for git merge\nStep 4: Update server.py\n[CHANGED] Remove dead offline-queue logic, but KEEP the Mac-online checks for git operations:\n\nRemove imports (lines 30-31):\n\n# DELETE these - we're replacing with simpler approach\nfrom .cache import CacheManager, get_cache_manager\nfrom .sync import SyncManager, get_sync_manager\n\nRemove sync_manager and cache_manager variables and initialization\n\nSimplify endpoints:\n\nlist_projects: Read local registry, no cache fallback needed\nlist_features: Read local registry\nadd_feature: Write local registry (works offline!)\nstart_feature: Keep Mac-online check (needs git)\nmerge_feature: Keep Mac-online check (needs git)\nRemove /api/{project}/pending - Already done in commit 70b3e76\n\nRemove /api/system/sync - Already done in commit 70b3e76\n\nStep 5: Delete Dead Files\nrm flowforge/cache.py   # 433 lines - replaced by simple JSON\nrm flowforge/sync.py    # 433 lines - no longer needed\n\nStep 6: One-Time Migration\nCopy existing registries from Mac to Pi:\n\n# On Pi, for each project:\nssh $FLOWFORGE_MAC_USER@$FLOWFORGE_MAC_HOST \\\n  \"cat /Users/Brian/Projects/Active/AirFit/.flowforge/registry.json\" \\\n  > /var/flowforge/registries/AirFit/registry.json\n\nStep 7: Sync Strategy (Keep Simple)\nWhen Mac comes online and git operations happen:\n\nAfter start_feature: Pi registry is already updated locally\nAfter merge_feature: Update local registry with result\nNo background sync needed - Pi is source of truth for registry\nEdge case: If someone uses forge CLI directly on Mac, Pi won't know. Accept this limitation or add a \"refresh from Mac\" button later.\n\nTesting\n# Mac CLOSED:\n- Add feature from iPhone \u2192 \u2705 Should work (Pi-local)\n- List features \u2192 \u2705 Should work (Pi-local)\n- Start feature \u2192 \u274c Should fail with \"Mac offline\" message\n\n# Mac OPEN:\n- Start feature \u2192 \u2705 Creates worktree via SSH\n- Stop/Merge \u2192 \u2705 Git ops via SSH\n\nSummary of changes from original prompt:\n\nRemoved already-done items (endpoint deletions)\nAdded decision point: repurpose cache.py vs simple JSON\nClarified that current SSH-only code was wrong direction\nSimplified sync strategy (no background sync, Pi is truth for registry)\nAdded edge case acknowledgment (direct forge CLI usage)",
+      "description": null,
+      "status": "inbox",
+      "priority": 5,
+      "complexity": "medium",
+      "parent_id": null,
+      "children": [],
+      "depends_on": [],
+      "blocked_by": [],
+      "branch": null,
+      "worktree_path": null,
+      "created_at": "2025-12-27T13:06:49.336779",
+      "updated_at": "2025-12-27T13:06:49.336785",
+      "started_at": null,
+      "completed_at": null,
+      "spec_path": null,
+      "prompt_path": null,
+      "notes": null,
+      "tags": [],
+      "session_id": null,
+      "extensions": {}
     }
   },
   "merge_queue": [],
