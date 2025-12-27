@@ -81,25 +81,76 @@ struct ConnectionStatusBadge: View {
     }
 }
 
-/// iOS Roadmap view - list-based instead of Kanban
+/// iOS Roadmap view - aligned with macOS MissionControlV2 workflow
 struct iOSRoadmapView: View {
     @Environment(AppState.self) private var appState
     @State private var showingQuickCapture = false
     @State private var quickCaptureText = ""
+    @State private var showingBrainstorm = false
+    @State private var brainstormFeature: Feature?
+
+    // Computed properties matching macOS
+    private var ideaInboxFeatures: [Feature] {
+        appState.features.filter { $0.status == .planned || $0.status == .idea }
+    }
+
+    private var inProgressFeatures: [Feature] {
+        appState.features.filter { $0.status == .inProgress || $0.status == .review }
+    }
+
+    private var shippedFeatures: [Feature] {
+        appState.features.filter { $0.status == .completed }
+    }
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             List {
-                ForEach(FeatureStatus.allCases, id: \.self) { status in
-                    Section(status.displayName) {
-                        let features = appState.features(for: status)
-                        if features.isEmpty {
-                            Text("No features")
+                // IDEA INBOX - the queue of ideas waiting to be started
+                Section {
+                    if ideaInboxFeatures.isEmpty {
+                        HStack {
+                            Image(systemName: "lightbulb")
                                 .foregroundColor(.secondary)
-                        } else {
-                            ForEach(features) { feature in
-                                iOSFeatureRow(feature: feature)
-                            }
+                            Text("No ideas yet. Tap + to capture one!")
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.vertical, 8)
+                    } else {
+                        ForEach(ideaInboxFeatures) { feature in
+                            iOSIdeaCard(
+                                feature: feature,
+                                onRefine: { refineFeature(feature) },
+                                onCopyPrompt: { copyPrompt(for: feature) }
+                            )
+                        }
+                    }
+                } header: {
+                    HStack {
+                        Image(systemName: "lightbulb.fill")
+                            .foregroundColor(.yellow)
+                        Text("IDEA INBOX")
+                    }
+                }
+
+                // IN PROGRESS - active work
+                if !inProgressFeatures.isEmpty {
+                    Section("IN PROGRESS") {
+                        ForEach(inProgressFeatures) { feature in
+                            iOSFeatureRow(feature: feature)
+                        }
+                    }
+                }
+
+                // SHIPPED - completed features
+                if !shippedFeatures.isEmpty {
+                    Section("SHIPPED") {
+                        ForEach(shippedFeatures.prefix(5)) { feature in
+                            iOSFeatureRow(feature: feature)
+                        }
+                        if shippedFeatures.count > 5 {
+                            Text("+ \(shippedFeatures.count - 5) more")
+                                .foregroundColor(.secondary)
+                                .font(.caption)
                         }
                     }
                 }
@@ -135,6 +186,97 @@ struct iOSRoadmapView: View {
                 isPresented: $showingQuickCapture
             )
         }
+        .sheet(isPresented: $showingBrainstorm) {
+            if let feature = brainstormFeature, let project = appState.selectedProject {
+                NavigationStack {
+                    BrainstormChatView(
+                        project: project.name,
+                        existingFeature: feature
+                    )
+                    .environment(appState)
+                    .navigationTitle("Refine Idea")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Done") { showingBrainstorm = false }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func refineFeature(_ feature: Feature) {
+        brainstormFeature = feature
+        showingBrainstorm = true
+    }
+
+    private func copyPrompt(for feature: Feature) {
+        guard let projectName = appState.selectedProject?.name else { return }
+
+        Task {
+            do {
+                let apiClient = APIClient()
+                let prompt = try await apiClient.getPrompt(
+                    project: projectName,
+                    featureId: feature.id
+                )
+                await MainActor.run {
+                    UIPasteboard.general.string = prompt
+                }
+            } catch {
+                print("Failed to copy prompt: \(error)")
+            }
+        }
+    }
+}
+
+/// Card for ideas in the IDEA INBOX
+struct iOSIdeaCard: View {
+    let feature: Feature
+    var onRefine: () -> Void
+    var onCopyPrompt: () -> Void
+
+    @State private var showCopiedToast = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Title
+            Text(feature.title)
+                .font(.headline)
+
+            // Description if present
+            if let description = feature.description, !description.isEmpty {
+                Text(description)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .lineLimit(2)
+            }
+
+            // Action buttons
+            HStack(spacing: 12) {
+                Button {
+                    onRefine()
+                } label: {
+                    Label("Refine", systemImage: "sparkles")
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+
+                Button {
+                    onCopyPrompt()
+                    showCopiedToast = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                        showCopiedToast = false
+                    }
+                } label: {
+                    Label(showCopiedToast ? "Copied!" : "Copy Prompt", systemImage: showCopiedToast ? "checkmark" : "doc.on.clipboard")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+        }
+        .padding(.vertical, 4)
     }
 }
 
@@ -413,164 +555,24 @@ struct iOSFeatureDetailView: View {
     }
 }
 
-/// Brainstorm input view for pasting Claude output
+/// Brainstorm view - real-time chat with Claude (aligned with macOS)
 struct BrainstormInputView: View {
     @Environment(AppState.self) private var appState
-    @State private var claudeOutput = ""
-    @State private var isParsing = false
-    @State private var parseError: String?
-    @State private var showingReview = false
-
-    // Feature counts by status
-    private var plannedCount: Int { appState.features(for: .planned).count }
-    private var inProgressCount: Int { appState.features(for: .inProgress).count }
-    private var reviewCount: Int { appState.features(for: .review).count }
-    private var completedCount: Int { appState.features(for: .completed).count }
-    private var totalCount: Int { appState.features.count }
 
     var body: some View {
-        VStack(spacing: 0) {
-            if appState.selectedProject == nil {
-                ContentUnavailableView(
-                    "No Project Selected",
-                    systemImage: "folder.badge.questionmark",
-                    description: Text("Select a project in Settings first.")
-                )
-            } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
-                        // Project Context Header
-                        if let project = appState.selectedProject {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Brainstorming for")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-
-                                Text(project.name)
-                                    .font(.title.bold())
-
-                                // Feature stats
-                                HStack(spacing: 16) {
-                                    StatBadge(count: totalCount, label: "Total", color: .primary)
-                                    StatBadge(count: plannedCount, label: "Planned", color: .gray)
-                                    StatBadge(count: inProgressCount, label: "Active", color: .blue)
-                                    StatBadge(count: completedCount, label: "Shipped", color: .green)
-                                }
-
-                                if totalCount > 0 {
-                                    ProgressView(value: Double(completedCount), total: Double(totalCount))
-                                        .tint(.green)
-
-                                    Text("\(Int(Double(completedCount) / Double(totalCount) * 100))% complete")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                            .padding()
-                            .background(Color(.secondarySystemBackground))
-                            .cornerRadius(12)
-                        }
-
-                        // Instructions
-                        GroupBox {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Label("How it works", systemImage: "info.circle")
-                                    .font(.headline)
-
-                                Text("1. Brainstorm with Claude (CLI or web)")
-                                Text("2. Ask Claude to output READY_FOR_APPROVAL")
-                                Text("3. Copy Claude's response and paste below")
-                                Text("4. Review and approve proposals")
-                            }
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        }
-
-                        // Input area
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Claude's Output")
-                                .font(.headline)
-
-                            TextEditor(text: $claudeOutput)
-                                .frame(minHeight: 200)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
-                                )
-                                .overlay(alignment: .topLeading) {
-                                    if claudeOutput.isEmpty {
-                                        Text("Paste READY_FOR_APPROVAL output here...")
-                                            .foregroundColor(.secondary)
-                                            .padding(8)
-                                            .allowsHitTesting(false)
-                                    }
-                                }
-                        }
-
-                        // Error display
-                        if let error = parseError {
-                            Text(error)
-                                .font(.caption)
-                                .foregroundColor(.red)
-                                .padding(.horizontal)
-                        }
-
-                        // Parse button
-                        Button {
-                            parseProposals()
-                        } label: {
-                            HStack {
-                                if isParsing {
-                                    ProgressView()
-                                        .scaleEffect(0.8)
-                                } else {
-                                    Image(systemName: "wand.and.stars")
-                                }
-                                Text("Parse Proposals")
-                            }
-                            .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(claudeOutput.isEmpty || isParsing)
-                    }
-                    .padding()
-                }
-            }
-        }
-        .sheet(isPresented: $showingReview) {
-            iOSProposalReviewSheet(
-                proposals: Binding(
-                    get: { appState.parsedProposals },
-                    set: { appState.parsedProposals = $0 }
-                ),
-                projectName: appState.selectedProject?.name ?? "",
-                onComplete: { proposals in
-                    Task {
-                        try? await appState.approveProposals(proposals)
-                        claudeOutput = ""
-                    }
-                }
+        if let project = appState.selectedProject {
+            // Real-time brainstorm chat (new ideas, no existing feature)
+            BrainstormChatView(
+                project: project.name,
+                existingFeature: nil  // New brainstorm, not refining
             )
-        }
-    }
-
-    private func parseProposals() {
-        isParsing = true
-        parseError = nil
-
-        Task {
-            do {
-                try await appState.parseBrainstorm(claudeOutput: claudeOutput)
-                await MainActor.run {
-                    isParsing = false
-                    showingReview = true
-                }
-            } catch {
-                await MainActor.run {
-                    isParsing = false
-                    parseError = error.localizedDescription
-                }
-            }
+            .environment(appState)
+        } else {
+            ContentUnavailableView(
+                "No Project Selected",
+                systemImage: "folder.badge.questionmark",
+                description: Text("Select a project in Settings first.")
+            )
         }
     }
 }
