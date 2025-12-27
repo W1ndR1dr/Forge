@@ -99,24 +99,28 @@ class RemoteExecutor:
             RemoteResult with returncode, stdout, stderr
         """
         # Build the remote command
-        remote_cmd_parts = []
+        # Simple case: no cwd or env - just quote and run
+        if not cwd and not env:
+            remote_cmd = " ".join(shlex.quote(arg) for arg in command)
+        else:
+            # Complex case: need cd/export - use bash -c
+            remote_cmd_parts = []
 
-        # Change directory if specified
-        if cwd:
-            remote_cmd_parts.append(f"cd {shlex.quote(str(cwd))}")
+            # Change directory if specified
+            if cwd:
+                remote_cmd_parts.append(f"cd {shlex.quote(str(cwd))}")
 
-        # Set environment variables
-        if env:
-            for key, value in env.items():
-                remote_cmd_parts.append(f"export {key}={shlex.quote(value)}")
+            # Set environment variables
+            if env:
+                for key, value in env.items():
+                    remote_cmd_parts.append(f"export {key}={shlex.quote(value)}")
 
-        # Add the actual command
-        remote_cmd_parts.append(" ".join(shlex.quote(arg) for arg in command))
+            # Add the actual command
+            remote_cmd_parts.append(" ".join(shlex.quote(arg) for arg in command))
 
-        # Combine with && to ensure all parts execute in sequence
-        # Wrap in bash -c to handle complex quoting
-        inner_cmd = " && ".join(remote_cmd_parts)
-        remote_cmd = f"bash -c {shlex.quote(inner_cmd)}"
+            # Combine with && and wrap in bash -c
+            inner_cmd = " && ".join(remote_cmd_parts)
+            remote_cmd = f"bash -c {shlex.quote(inner_cmd)}"
 
         # Build full SSH command
         ssh_cmd = self._build_ssh_command()
