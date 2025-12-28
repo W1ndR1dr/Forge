@@ -1850,6 +1850,264 @@ async def brainstorm_websocket(websocket: WebSocket, project: str):
 
 
 # =============================================================================
+# Deep Research Endpoints
+# =============================================================================
+
+
+class ResearchUploadRequest(BaseModel):
+    """Request to upload a research report."""
+    provider: str  # e.g., "openevidence", "gemini", "chatgpt", "perplexity"
+    content: str  # Markdown content
+
+
+@app.get("/api/{project}/features/{feature_id}/research-need")
+async def get_research_need(project: str, feature_id: str):
+    """
+    Analyze whether a feature would benefit from deep research.
+
+    Uses Claude to determine if research would be valuable based on
+    feature complexity, domain knowledge requirements, etc.
+    """
+    # Get project context (from Pi-local storage)
+    try:
+        project_path, config, registry = mcp_server._get_project_context(project)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    feature = registry.get_feature(feature_id)
+    if not feature:
+        raise HTTPException(status_code=404, detail=f"Feature not found: {feature_id}")
+
+    # Use IntelligenceEngine to analyze research need
+    intelligence = IntelligenceEngine(project_path)
+    recommendation = intelligence.analyze_research_need(
+        feature_title=feature.title,
+        feature_description=feature.description or "",
+        tags=feature.tags or [],
+    )
+
+    return {
+        "needs_research": recommendation.should_research,
+        "topics": recommendation.topics,
+        "reasoning": recommendation.reasoning,
+        "suggested_providers": recommendation.providers,
+        "search_queries": recommendation.search_queries,
+        "official_docs": recommendation.official_docs,
+    }
+
+
+@app.get("/api/{project}/features/{feature_id}/research-prompts")
+async def get_research_prompts(project: str, feature_id: str):
+    """
+    Generate research prompts for various providers.
+
+    Returns tailored prompts for Claude, Gemini, ChatGPT, OpenEvidence, and Perplexity.
+    User can copy these to use in external deep research tools.
+    """
+    # Get project context (from Pi-local storage)
+    try:
+        project_path, config, registry = mcp_server._get_project_context(project)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    feature = registry.get_feature(feature_id)
+    if not feature:
+        raise HTTPException(status_code=404, detail=f"Feature not found: {feature_id}")
+
+    # First check what research is needed
+    intelligence = IntelligenceEngine(project_path)
+    recommendation = intelligence.analyze_research_need(
+        feature_title=feature.title,
+        feature_description=feature.description or "",
+        tags=feature.tags or [],
+    )
+
+    # Generate prompts for all providers (user decides which to use)
+    all_providers = ["claude", "gemini", "chatgpt", "openevidence", "perplexity"]
+    prompts = intelligence.generate_research_prompts(
+        feature_title=feature.title,
+        feature_description=feature.description or "",
+        topics=recommendation.topics if recommendation.topics else [feature.title],
+        providers=all_providers,
+    )
+
+    return {
+        "feature_id": feature_id,
+        "feature_title": feature.title,
+        "prompts": prompts,
+        "topics": recommendation.topics,
+    }
+
+
+@app.post("/api/{project}/features/{feature_id}/research")
+async def upload_research(
+    project: str,
+    feature_id: str,
+    request: ResearchUploadRequest,
+):
+    """
+    Upload a research report from an external provider.
+
+    Saves the markdown content to .flowforge/research/{feature_id}/{provider}.md
+    """
+    # Get project context (from Pi-local storage)
+    try:
+        project_path, config, registry = mcp_server._get_project_context(project)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    feature = registry.get_feature(feature_id)
+    if not feature:
+        raise HTTPException(status_code=404, detail=f"Feature not found: {feature_id}")
+
+    # Save research output using IntelligenceEngine
+    intelligence = IntelligenceEngine(project_path)
+    intelligence.save_research_output(
+        feature_id=feature_id,
+        provider=request.provider,
+        output=request.content,
+    )
+
+    return {
+        "success": True,
+        "message": f"Research from {request.provider} saved for {feature.title}",
+        "provider": request.provider,
+        "feature_id": feature_id,
+    }
+
+
+@app.get("/api/{project}/features/{feature_id}/research")
+async def list_research(project: str, feature_id: str):
+    """
+    List all research reports for a feature.
+
+    Returns list of uploaded reports with previews and synthesis status.
+    """
+    # Get project context (from Pi-local storage)
+    try:
+        project_path, config, registry = mcp_server._get_project_context(project)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    feature = registry.get_feature(feature_id)
+    if not feature:
+        raise HTTPException(status_code=404, detail=f"Feature not found: {feature_id}")
+
+    # Load research session
+    intelligence = IntelligenceEngine(project_path)
+    session = intelligence.load_session(feature_id)
+
+    reports = []
+    has_synthesis = False
+
+    if session:
+        has_synthesis = session.synthesis is not None
+
+        for provider, output in session.outputs.items():
+            # Create preview (first 200 chars)
+            preview = output[:200] + "..." if len(output) > 200 else output
+
+            reports.append({
+                "id": provider,
+                "provider": provider,
+                "filename": f"{provider}_output.md",
+                "preview": preview,
+                "uploaded_at": session.created_at,
+            })
+
+    return {
+        "feature_id": feature_id,
+        "reports": reports,
+        "report_count": len(reports),
+        "has_synthesis": has_synthesis,
+        "synthesis_preview": session.synthesis[:300] + "..." if session and session.synthesis and len(session.synthesis) > 300 else (session.synthesis if session else None),
+    }
+
+
+@app.post("/api/{project}/features/{feature_id}/research/synthesize")
+async def synthesize_research(project: str, feature_id: str):
+    """
+    Synthesize all research reports into unified implementation context.
+
+    Combines research from multiple providers into actionable guidance
+    that gets included in the implementation prompt.
+    """
+    # Get project context (from Pi-local storage)
+    try:
+        project_path, config, registry = mcp_server._get_project_context(project)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    feature = registry.get_feature(feature_id)
+    if not feature:
+        raise HTTPException(status_code=404, detail=f"Feature not found: {feature_id}")
+
+    # Check if there are reports to synthesize
+    intelligence = IntelligenceEngine(project_path)
+    session = intelligence.load_session(feature_id)
+
+    if not session or not session.outputs:
+        raise HTTPException(
+            status_code=400,
+            detail="No research reports to synthesize. Upload at least one report first."
+        )
+
+    # Synthesize research
+    synthesis = intelligence.synthesize_research(feature_id)
+
+    return {
+        "success": True,
+        "feature_id": feature_id,
+        "synthesis": synthesis,
+        "reports_synthesized": list(session.outputs.keys()),
+    }
+
+
+@app.delete("/api/{project}/features/{feature_id}/research/{provider}")
+async def delete_research(project: str, feature_id: str, provider: str):
+    """
+    Delete a specific research report.
+    """
+    # Get project context (from Pi-local storage)
+    try:
+        project_path, config, registry = mcp_server._get_project_context(project)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    feature = registry.get_feature(feature_id)
+    if not feature:
+        raise HTTPException(status_code=404, detail=f"Feature not found: {feature_id}")
+
+    # Load and update session
+    intelligence = IntelligenceEngine(project_path)
+    session = intelligence.load_session(feature_id)
+
+    if not session or provider not in session.outputs:
+        raise HTTPException(status_code=404, detail=f"Research from {provider} not found")
+
+    # Remove from outputs
+    del session.outputs[provider]
+
+    # Clear synthesis since it's now stale
+    session.synthesis = None
+    session.status = "in_progress" if session.outputs else "pending"
+
+    # Save updated session
+    intelligence._save_session(session)
+
+    # Delete the output file
+    output_file = intelligence.research_dir / feature_id / f"{provider}_output.md"
+    if output_file.exists():
+        output_file.unlink()
+
+    return {
+        "success": True,
+        "message": f"Deleted research from {provider}",
+        "remaining_reports": list(session.outputs.keys()),
+    }
+
+
+# =============================================================================
 # CLI Entry Point
 # =============================================================================
 

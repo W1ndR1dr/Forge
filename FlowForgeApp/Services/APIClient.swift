@@ -279,6 +279,53 @@ actor APIClient {
         return try await get(url: url)
     }
 
+    // MARK: - Deep Research
+
+    /// Analyze whether a feature would benefit from deep research
+    func getResearchNeed(project: String, featureId: String) async throws -> ResearchNeed {
+        let url = baseURL.appendingPathComponent("api/\(project)/features/\(featureId)/research-need")
+        return try await get(url: url)
+    }
+
+    /// Get research prompts for various providers
+    func getResearchPrompts(project: String, featureId: String) async throws -> ResearchPrompts {
+        let url = baseURL.appendingPathComponent("api/\(project)/features/\(featureId)/research-prompts")
+        return try await get(url: url)
+    }
+
+    /// Upload a research report from an external provider
+    func uploadResearch(
+        project: String,
+        featureId: String,
+        provider: String,
+        content: String
+    ) async throws {
+        let url = baseURL.appendingPathComponent("api/\(project)/features/\(featureId)/research")
+        let body: [String: Any] = [
+            "provider": provider,
+            "content": content,
+        ]
+        let _: ResearchUploadResponse = try await post(url: url, body: body)
+    }
+
+    /// List all research reports for a feature
+    func getResearchReports(project: String, featureId: String) async throws -> ResearchReportList {
+        let url = baseURL.appendingPathComponent("api/\(project)/features/\(featureId)/research")
+        return try await get(url: url)
+    }
+
+    /// Synthesize all research reports into unified implementation context
+    func synthesizeResearch(project: String, featureId: String) async throws -> ResearchSynthesis {
+        let url = baseURL.appendingPathComponent("api/\(project)/features/\(featureId)/research/synthesize")
+        return try await post(url: url, body: [:])
+    }
+
+    /// Delete a specific research report
+    func deleteResearch(project: String, featureId: String, provider: String) async throws {
+        let url = baseURL.appendingPathComponent("api/\(project)/features/\(featureId)/research/\(provider)")
+        let _: EmptyResponse = try await delete(url: url)
+    }
+
     // MARK: - Private HTTP Methods
 
     private func get<T: Decodable>(url: URL) async throws -> T {
@@ -574,4 +621,104 @@ struct HealthIssue: Decodable, Identifiable {
 private struct ReconcileResponse: Decodable {
     let success: Bool
     let message: String?
+}
+
+// MARK: - Deep Research Types
+
+/// Analysis of whether a feature needs deep research
+struct ResearchNeed: Decodable {
+    let needsResearch: Bool
+    let topics: [String]
+    let reasoning: String
+    let suggestedProviders: [String]
+    let searchQueries: [String]?
+    let officialDocs: [String]?
+
+    enum CodingKeys: String, CodingKey {
+        case needsResearch = "needs_research"
+        case topics
+        case reasoning
+        case suggestedProviders = "suggested_providers"
+        case searchQueries = "search_queries"
+        case officialDocs = "official_docs"
+    }
+}
+
+/// Research prompts for various providers
+struct ResearchPrompts: Decodable {
+    let featureId: String
+    let featureTitle: String
+    let prompts: [String: String]  // provider -> prompt
+    let topics: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case featureId = "feature_id"
+        case featureTitle = "feature_title"
+        case prompts
+        case topics
+    }
+}
+
+/// Response from uploading a research report
+private struct ResearchUploadResponse: Decodable {
+    let success: Bool
+    let message: String
+    let provider: String
+    let featureId: String
+
+    enum CodingKeys: String, CodingKey {
+        case success
+        case message
+        case provider
+        case featureId = "feature_id"
+    }
+}
+
+/// A single research report
+struct ResearchReport: Decodable, Identifiable {
+    let id: String
+    let provider: String
+    let filename: String
+    let preview: String
+    let uploadedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case provider
+        case filename
+        case preview
+        case uploadedAt = "uploaded_at"
+    }
+}
+
+/// List of research reports for a feature
+struct ResearchReportList: Decodable {
+    let featureId: String
+    let reports: [ResearchReport]
+    let reportCount: Int
+    let hasSynthesis: Bool
+    let synthesisPreview: String?
+
+    enum CodingKeys: String, CodingKey {
+        case featureId = "feature_id"
+        case reports
+        case reportCount = "report_count"
+        case hasSynthesis = "has_synthesis"
+        case synthesisPreview = "synthesis_preview"
+    }
+}
+
+/// Result of synthesizing research reports
+struct ResearchSynthesis: Decodable {
+    let success: Bool
+    let featureId: String
+    let synthesis: String
+    let reportsSynthesized: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case success
+        case featureId = "feature_id"
+        case synthesis
+        case reportsSynthesized = "reports_synthesized"
+    }
 }

@@ -15,7 +15,12 @@ struct BrainstormChatView: View {
     @State private var inputText = ""
     @State private var showingSpec = false
     @State private var isGeneratingSpec = false
+    @State private var showingResearch = false
+    @State private var researchNeed: ResearchNeed?
+    @State private var isCheckingResearch = false
     @FocusState private var isInputFocused: Bool
+
+    private let apiClient = APIClient()
 
     let project: String
     var existingFeature: Feature?  // Feature being refined (nil = new brainstorm)
@@ -69,6 +74,11 @@ struct BrainstormChatView: View {
                 specReadyBanner
             }
 
+            // Research suggestion banner (show when refining and research is recommended)
+            if let researchNeed = researchNeed, researchNeed.needsResearch, isRefiningFeature {
+                researchSuggestionBanner
+            }
+
             // Input area
             inputView
         }
@@ -93,6 +103,16 @@ struct BrainstormChatView: View {
                     spec: spec,
                     project: project,
                     existingFeature: existingFeature  // Pass for update vs create logic
+                )
+                .environment(appState)
+            }
+        }
+        .sheet(isPresented: $showingResearch) {
+            if let feature = existingFeature {
+                ResearchSheet(
+                    project: project,
+                    featureId: feature.id,
+                    featureTitle: feature.title
                 )
                 .environment(appState)
             }
@@ -274,6 +294,76 @@ struct BrainstormChatView: View {
             .background(Accent.success.opacity(0.1))
         }
         .buttonStyle(.plain)
+        .onAppear {
+            // Check if research is recommended when spec is ready
+            checkResearchNeed()
+        }
+    }
+
+    // MARK: - Research Suggestion Banner
+
+    private var researchSuggestionBanner: some View {
+        Button(action: { showingResearch = true }) {
+            HStack(spacing: Spacing.small) {
+                Image(systemName: "brain.head.profile")
+                    .foregroundColor(Accent.primary)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Deep research recommended")
+                        .font(Typography.caption)
+                        .fontWeight(.medium)
+
+                    if let topics = researchNeed?.topics, !topics.isEmpty {
+                        Text(topics.joined(separator: ", "))
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+
+                Spacer()
+
+                if isCheckingResearch {
+                    ProgressView()
+                        .scaleEffect(0.6)
+                } else {
+                    Text("Get Prompts")
+                        .font(Typography.caption)
+                        .foregroundColor(Accent.primary)
+                    Image(systemName: "chevron.right")
+                        .font(.caption2)
+                        .foregroundColor(Accent.primary)
+                }
+            }
+            .padding(.horizontal, Spacing.standard)
+            .padding(.vertical, Spacing.small)
+            .background(Accent.primary.opacity(0.1))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func checkResearchNeed() {
+        guard let feature = existingFeature else { return }
+        guard researchNeed == nil else { return }  // Only check once
+
+        isCheckingResearch = true
+
+        Task {
+            do {
+                let need = try await apiClient.getResearchNeed(
+                    project: project,
+                    featureId: feature.id
+                )
+                await MainActor.run {
+                    researchNeed = need
+                    isCheckingResearch = false
+                }
+            } catch {
+                await MainActor.run {
+                    isCheckingResearch = false
+                }
+            }
+        }
     }
 
     // MARK: - Input Area

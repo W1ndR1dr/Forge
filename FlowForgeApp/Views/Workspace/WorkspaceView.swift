@@ -1234,9 +1234,11 @@ struct IdeaFeatureCard: View {
     @State private var isHovered = false
     @State private var showingDeleteConfirmation = false
     @State private var showingPromptPreview = false
+    @State private var showingResearchSheet = false
     @State private var isLoadingPrompt = false
     @State private var promptText: String?
     @State private var promptError: String?
+    @State private var researchReports: ResearchReportList?
 
     private let apiClient = APIClient()
 
@@ -1249,10 +1251,28 @@ struct IdeaFeatureCard: View {
 
             // Title and description
             VStack(alignment: .leading, spacing: 2) {
-                Text(feature.title)
-                    .font(Typography.body)
-                    .fontWeight(.medium)
-                    .lineLimit(1)
+                HStack(spacing: Spacing.small) {
+                    Text(feature.title)
+                        .font(Typography.body)
+                        .fontWeight(.medium)
+                        .lineLimit(1)
+
+                    // Research badge indicator
+                    if let reports = researchReports, reports.reportCount > 0 {
+                        HStack(spacing: 2) {
+                            Image(systemName: "brain.head.profile")
+                                .font(.system(size: 8))
+                            Text("\(reports.reportCount)")
+                                .font(.system(size: 9, weight: .medium))
+                        }
+                        .foregroundColor(reports.hasSynthesis ? Accent.success : Accent.primary)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 2)
+                        .background(reports.hasSynthesis ? Accent.success.opacity(0.15) : Accent.primary.opacity(0.15))
+                        .cornerRadius(4)
+                        .help(reports.hasSynthesis ? "Synthesized research ready" : "\(reports.reportCount) research report(s)")
+                    }
+                }
 
                 if let desc = feature.description, !desc.isEmpty {
                     Text(desc.components(separatedBy: "\n").first ?? "")
@@ -1293,6 +1313,15 @@ struct IdeaFeatureCard: View {
                     .buttonStyle(.plain)
                     .help("Preview implementation prompt")
                     .disabled(isLoadingPrompt)
+
+                    // Research button
+                    Button(action: { showingResearchSheet = true }) {
+                        Image(systemName: "brain.head.profile")
+                            .font(Typography.caption)
+                            .foregroundColor(researchReports?.reportCount ?? 0 > 0 ? Accent.primary : .secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Deep research")
 
                     Button(action: onRefine) {
                         HStack(spacing: 4) {
@@ -1344,8 +1373,35 @@ struct IdeaFeatureCard: View {
                 onDismiss: { showingPromptPreview = false }
             )
         }
+        .sheet(isPresented: $showingResearchSheet) {
+            if let project = appState.selectedProject {
+                ResearchSheet(
+                    project: project.name,
+                    featureId: feature.id,
+                    featureTitle: feature.title
+                )
+                .environment(appState)
+            }
+        }
         .onHover { isHovered = $0 }
+        .onAppear {
+            Task { await loadResearchReports() }
+        }
         .animation(SpringPreset.snappy, value: isHovered)
+    }
+
+    @MainActor
+    private func loadResearchReports() async {
+        guard let project = appState.selectedProject else { return }
+
+        do {
+            researchReports = try await apiClient.getResearchReports(
+                project: project.name,
+                featureId: feature.id
+            )
+        } catch {
+            // Silently fail - research status is optional
+        }
     }
 
     @MainActor

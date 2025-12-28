@@ -255,6 +255,32 @@ Please provide research on implementing this feature:
 
 Focus on practical, copy-paste-ready guidance."""
 
+        if "openevidence" in providers:
+            prompts["openevidence"] = f"""{base_context}
+
+I'm implementing a health/fitness feature in my app and need evidence-based guidance.
+
+Please research:
+1. Peer-reviewed literature on the relevant physiological concepts
+2. Clinical validation studies for similar approaches
+3. Medical/health guidelines from authoritative sources (WHO, AHA, ACSM, etc.)
+4. Safety considerations and contraindications
+5. Evidence quality assessment (strength of recommendations)
+
+Focus on peer-reviewed, clinically validated information I can cite."""
+
+        if "perplexity" in providers:
+            prompts["perplexity"] = f"""{base_context}
+
+Please search for:
+1. Recent articles and documentation on this topic
+2. GitHub repos with similar implementations
+3. Stack Overflow discussions and solutions
+4. Blog posts from practitioners
+5. Current best practices and gotchas
+
+Include links to your sources."""
+
         return prompts
 
     def open_research_sessions(
