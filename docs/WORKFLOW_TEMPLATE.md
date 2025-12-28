@@ -23,7 +23,7 @@ This project uses an AGI-pilled development workflow with FlowForge orchestratio
 ### Workflow Loop
 
 ```
-CAPTURE → CRYSTALLIZE → START → [Claude Code] → STOP → SHIP
+CAPTURE → REFINE → START → [Claude Code] → STOP → SHIP
                                      ↑
                                 You are here
 ```

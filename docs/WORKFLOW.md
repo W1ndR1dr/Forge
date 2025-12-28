@@ -24,7 +24,7 @@ This mirrors how humans actually think: scattered and associative during explora
                              │
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  CRYSTALLIZE                                                     │
+│  REFINE                                                          │
 │  Review rough ideas, discuss with LLM, refine into               │
 │  a clear feature description with context                        │
 └────────────────────────────┬────────────────────────────────────┘

@@ -15,11 +15,11 @@ These terms have specific meanings in FlowForge:
 | Term | Meaning |
 |------|---------|
 | **Capture** | Quick, low-friction idea input (VibeInput, Quick Capture FAB) |
-| **Crystallize** | Refine vague idea → clear spec via chat (BrainstormChatView) |
+| **Refine** | Turn vague idea → clear spec via chat (BrainstormChatView) |
 | **Ship** | Merge feature to main (not deploy - deploy is separate) |
 | **Worktree** | Isolated git working directory for parallel feature dev |
 | **Idea** | Unrefined feature, lives in IDEA INBOX |
-| **Planned** | Crystallized idea, ready to implement |
+| **Planned** | Refined idea, ready to implement |
 
 Avoid:
 - "V2" suffixes → just use the clean name

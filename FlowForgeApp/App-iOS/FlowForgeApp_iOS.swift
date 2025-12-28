@@ -81,7 +81,7 @@ struct ConnectionStatusBadge: View {
     }
 }
 
-/// iOS Roadmap view - Idea capture and crystallization only
+/// iOS Roadmap view - Idea capture and refinement only
 struct iOSRoadmapView: View {
     @Environment(AppState.self) private var appState
     @State private var showingQuickCapture = false

@@ -291,11 +291,11 @@ class BrainstormAgent:
         }
 
     def is_spec_ready(self) -> bool:
-        """Check if a spec has crystallized from the conversation."""
+        """Check if a spec is ready from the conversation."""
         return self.session.spec_ready
 
     def get_spec(self) -> Optional[SpecResult]:
-        """Get the crystallized spec, if ready."""
+        """Get the refined spec, if ready."""
         return self.session.current_spec
 
 

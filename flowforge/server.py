@@ -784,34 +784,24 @@ async def update_feature_spec(
 
     Used when refining an inbox item through the brainstorm chat.
     Updates title, description, and stores spec metadata.
+
+    This is a Pi-local operation - works even when Mac is offline.
     """
-    import json
     from datetime import datetime
     from .registry import FeatureStatus
 
-    # Get project context
+    # Get project context (from Pi-local storage)
     try:
         project_path, config, registry = mcp_server._get_project_context(project)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-    # Read registry via SSH (Pi can't write directly to Mac)
-    registry_path = project_path / ".flowforge" / "registry.json"
-
-    if not remote_executor:
-        raise HTTPException(status_code=500, detail="Remote executor not available")
-
-    registry_content = remote_executor.read_file(registry_path)
-    if not registry_content:
-        raise HTTPException(status_code=500, detail="Could not read registry")
-
-    registry_data = json.loads(registry_content)
-
-    if feature_id not in registry_data.get("features", {}):
+    # Get feature from Pi-local registry
+    feature = registry.get_feature(feature_id)
+    if not feature:
         raise HTTPException(status_code=404, detail=f"Feature not found: {feature_id}")
 
-    feature_data = registry_data["features"][feature_id]
-    old_status = feature_data.get("status")
+    old_status = feature.status
 
     # Build description with spec details
     full_description = request.description
@@ -822,24 +812,26 @@ async def update_feature_spec(
     if request.estimated_scope:
         full_description += f"\n\nEstimated scope: {request.estimated_scope}"
 
-    # Update feature data
-    feature_data["title"] = request.title
-    feature_data["description"] = full_description
-    feature_data["updated_at"] = datetime.now().isoformat()
+    # Build updates
+    updates = {
+        "title": request.title,
+        "description": full_description,
+    }
 
     # If it's an inbox item, refining promotes it to idea
-    if old_status == "inbox":
-        feature_data["status"] = "idea"
+    if old_status == FeatureStatus.INBOX:
+        updates["status"] = FeatureStatus.IDEA.value
 
-    # Write updated registry via SSH
-    updated_json = json.dumps(registry_data, indent=2)
-    remote_executor.write_file(registry_path, updated_json)
-    mcp_server._invalidate_cache(project)
+    # Update feature in Pi-local registry
+    registry.update_feature(feature_id, **updates)
+
+    # Save to Pi-local storage
+    mcp_server._save_registry(project, registry)
 
     # Broadcast update
     await ws_manager.broadcast_feature_update(project, feature_id, "updated")
 
-    status_msg = " (promoted to idea)" if old_status == "inbox" else ""
+    status_msg = " (promoted to idea)" if old_status == FeatureStatus.INBOX else ""
     return {"success": True, "message": f"Updated feature with refined spec: {request.title}{status_msg}"}
 
 
@@ -1070,14 +1062,19 @@ class ApproveProposalsRequest(BaseModel):
 
 @app.post("/api/{project}/proposals/approve")
 async def approve_proposals(project: str, request: ApproveProposalsRequest):
-    """Add approved proposals to the feature registry."""
-    config = get_config()
-    project_path = config["projects_base"] / project
+    """
+    Add approved proposals to the feature registry.
 
-    if not (project_path / ".flowforge").exists():
-        raise HTTPException(status_code=404, detail=f"Project not found: {project}")
+    This is a Pi-local operation - works even when Mac is offline.
+    """
+    # Import Feature and Complexity here to avoid circular import at top
+    from .registry import Feature, Complexity
 
-    registry = FeatureRegistry.load(project_path)
+    # Get project context (from Pi-local storage)
+    try:
+        project_path, config, registry = mcp_server._get_project_context(project)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
     added = []
     skipped = []
@@ -1090,9 +1087,6 @@ async def approve_proposals(project: str, request: ApproveProposalsRequest):
         if registry.get_feature(feature_id):
             skipped.append(proposal.title)
             continue
-
-        # Import Feature and Complexity here to avoid circular import at top
-        from .registry import Feature, Complexity
 
         # Map complexity string to enum
         try:
@@ -1110,6 +1104,9 @@ async def approve_proposals(project: str, request: ApproveProposalsRequest):
         )
         registry.add_feature(feature)
         added.append(proposal.title)
+
+    # Save to Pi-local storage
+    mcp_server._save_registry(project, registry)
 
     return {
         "added": added,
@@ -1472,15 +1469,16 @@ def get_session_memory():
 
 @app.get("/api/{project}/session")
 async def get_session_state(project: str):
-    """Get session state for welcome-back experience."""
+    """
+    Get session state for welcome-back experience.
+
+    This is a Pi-local operation - works even when Mac is offline.
+    """
     memory = get_session_memory()
 
-    # Also fetch current feature status
-    config = get_config()
-    project_path = config["projects_base"] / project
-
-    if (project_path / ".flowforge").exists():
-        registry = FeatureRegistry.load(project_path)
+    # Also fetch current feature status from Pi-local storage
+    try:
+        project_path, config, registry = mcp_server._get_project_context(project)
 
         # Update in-progress and ready-to-ship
         in_progress = [f.title for f in registry.list_features() if f.status.value == "in-progress"]
@@ -1492,6 +1490,9 @@ async def get_session_state(project: str):
         # Update streak
         stats = registry.get_shipping_stats()
         memory.update_streak(project, stats.current_streak)
+    except ValueError:
+        # Project not found in Pi-local storage - return empty session
+        pass
 
     session = memory.get_session(project)
     return session.to_dict()
@@ -1524,14 +1525,17 @@ async def record_visit(project: str):
 
 @app.get("/api/{project}/shipping-stats")
 async def get_shipping_stats(project: str):
-    """Get shipping streak statistics for a project."""
-    config = get_config()
-    project_path = config["projects_base"] / project
+    """
+    Get shipping streak statistics for a project.
 
-    if not (project_path / ".flowforge").exists():
-        raise HTTPException(status_code=404, detail=f"Project not found: {project}")
+    This is a Pi-local operation - works even when Mac is offline.
+    """
+    # Get project context (from Pi-local storage)
+    try:
+        project_path, config, registry = mcp_server._get_project_context(project)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
-    registry = FeatureRegistry.load(project_path)
     stats = registry.get_shipping_stats()
 
     return {
@@ -1591,8 +1595,12 @@ async def websocket_endpoint(websocket: WebSocket, project: str):
 
 
 # Store active brainstorm sessions
-# Key: "project" for general brainstorm, "project:feature_id" for crystallization
+# Key: "project" for general brainstorm, "project:feature_id" for refinement
 brainstorm_sessions: dict = {}
+
+# Extension key migration: crystallization_history → refinement_history
+_OLD_HISTORY_KEY = "crystallization_history"
+_NEW_HISTORY_KEY = "refinement_history"
 
 
 def _get_session_key(project: str, feature_id: Optional[str] = None) -> str:
@@ -1602,30 +1610,38 @@ def _get_session_key(project: str, feature_id: Optional[str] = None) -> str:
     return project
 
 
-def _load_feature_history(project_path: Path, feature_id: str) -> list[dict]:
-    """Load crystallization history from a feature's extensions."""
+def _load_feature_history(project_name: str, feature_id: str) -> list[dict]:
+    """Load refinement history from a feature's extensions (Pi-local)."""
     try:
-        registry = FeatureRegistry.load(project_path)
+        project_path, config, registry = mcp_server._get_project_context(project_name)
         feature = registry.get_feature(feature_id)
         if feature and feature.extensions:
-            return feature.extensions.get("crystallization_history", [])
+            # Try new key first, fall back to old key for migration
+            history = feature.extensions.get(_NEW_HISTORY_KEY)
+            if history is None:
+                history = feature.extensions.get(_OLD_HISTORY_KEY, [])
+            return history
     except Exception:
         pass
     return []
 
 
-def _save_feature_history(project_path: Path, feature_id: str, messages: list[dict]) -> None:
-    """Save crystallization history to a feature's extensions."""
+def _save_feature_history(project_name: str, feature_id: str, messages: list[dict]) -> None:
+    """Save refinement history to a feature's extensions (Pi-local)."""
     try:
-        registry = FeatureRegistry.load(project_path)
+        project_path, config, registry = mcp_server._get_project_context(project_name)
         feature = registry.get_feature(feature_id)
         if feature:
             if feature.extensions is None:
                 feature.extensions = {}
-            feature.extensions["crystallization_history"] = messages
+            # Always write to new key
+            feature.extensions[_NEW_HISTORY_KEY] = messages
+            # Remove old key if present (migration)
+            feature.extensions.pop(_OLD_HISTORY_KEY, None)
             registry.update_feature(feature_id, extensions=feature.extensions)
+            mcp_server._save_registry(project_name, registry)
     except Exception as e:
-        print(f"Failed to save crystallization history: {e}")
+        print(f"Failed to save refinement history: {e}")
 
 
 @app.websocket("/ws/{project}/brainstorm")
@@ -1634,7 +1650,7 @@ async def brainstorm_websocket(websocket: WebSocket, project: str):
     WebSocket endpoint for real-time brainstorming with Claude.
 
     This enables the Chat-to-Spec experience where users have a conversation
-    with Claude to crystallize feature ideas into implementable specs.
+    with Claude to refine feature ideas into implementable specs.
 
     Message format (from client):
     {
@@ -1652,26 +1668,30 @@ async def brainstorm_websocket(websocket: WebSocket, project: str):
         "content": "full response"
     }
     {
-        "type": "spec_ready",       # Spec has crystallized
+        "type": "spec_ready",       # Spec is ready
         "spec": { ... }
     }
     """
     await websocket.accept()
 
     try:
-        # Get project context
-        config = get_config()
-        project_path = config["projects_base"] / project
-
-        project_context = ""
-        context_path = project_path / ".flowforge" / "project-context.md"
-        if context_path.exists():
-            project_context = context_path.read_text()
-
+        # Get project context from Pi-local storage
         existing_features = []
-        if (project_path / ".flowforge").exists():
-            registry = FeatureRegistry.load(project_path)
+        project_context = ""
+
+        try:
+            project_path, config, registry = mcp_server._get_project_context(project)
             existing_features = [f.title for f in registry.list_features()]
+
+            # Try to load project context from Mac (optional, may fail if offline)
+            if remote_executor:
+                context_path = project_path / ".flowforge" / "project-context.md"
+                context_content = remote_executor.read_file(context_path)
+                if context_content:
+                    project_context = context_content
+        except ValueError:
+            # Project not found - continue with empty context
+            pass
 
         # Create or get existing brainstorm session
         from .agents.brainstorm import BrainstormAgent
@@ -1702,17 +1722,17 @@ async def brainstorm_websocket(websocket: WebSocket, project: str):
             data = await websocket.receive_json()
 
             if data.get("type") == "init":
-                # Client sending feature context for crystallization mode
+                # Client sending feature context for refinement mode
                 refining_feature_id = data.get("feature_id")
                 refining_feature_title = data.get("feature_title")
 
-                # Update session key for feature-specific crystallization
+                # Update session key for feature-specific refinement
                 session_key = _get_session_key(project, refining_feature_id)
 
                 # Load existing history from the feature record
                 existing_history = []
                 if refining_feature_id:
-                    existing_history = _load_feature_history(project_path, refining_feature_id)
+                    existing_history = _load_feature_history(project, refining_feature_id)
 
                 # Create session with feature context (and existing history)
                 brainstorm_sessions[session_key] = BrainstormAgent(
@@ -1750,13 +1770,13 @@ async def brainstorm_websocket(websocket: WebSocket, project: str):
                     "content": "".join(full_response),
                 })
 
-                # Persist history if crystallizing a feature
+                # Persist history if refining a feature
                 if refining_feature_id:
                     messages = [
                         {"role": msg.role, "content": msg.content}
                         for msg in agent.session.messages
                     ]
-                    _save_feature_history(project_path, refining_feature_id, messages)
+                    _save_feature_history(project, refining_feature_id, messages)
 
                 # Check if spec is ready
                 if agent.is_spec_ready():
@@ -1776,9 +1796,9 @@ async def brainstorm_websocket(websocket: WebSocket, project: str):
                 )
                 agent = brainstorm_sessions[session_key]
 
-                # Clear persisted history if crystallizing
+                # Clear persisted history if refining
                 if refining_feature_id:
-                    _save_feature_history(project_path, refining_feature_id, [])
+                    _save_feature_history(project, refining_feature_id, [])
 
                 await websocket.send_json({
                     "type": "session_reset",
