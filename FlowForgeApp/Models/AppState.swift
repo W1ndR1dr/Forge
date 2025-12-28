@@ -839,6 +839,39 @@ class AppState {
         }
     }
 
+    #if os(macOS)
+    /// Smart mark-as-done: detects if branch is merged and acts accordingly.
+    /// Returns the outcome: "shipped" (merged, cleaned up) or "review" (needs merge).
+    /// Returns nil on error.
+    func smartDoneFeature(_ feature: Feature) async -> String? {
+        guard let project = selectedProject else { return nil }
+
+        do {
+            let response = try await apiClient.smartDoneFeature(
+                project: project.name,
+                featureId: feature.id
+            )
+
+            // Update local state based on outcome
+            if let index = features.firstIndex(where: { $0.id == feature.id }) {
+                if response.outcome == "shipped" {
+                    features[index].status = .completed
+                    features[index].completedAt = Date()
+                    features[index].worktreePath = nil
+                    features[index].branch = nil
+                } else {
+                    features[index].status = .review
+                }
+            }
+
+            return response.outcome
+        } catch {
+            self.errorMessage = "Failed to mark done: \(error.localizedDescription)"
+            return nil
+        }
+    }
+    #endif
+
     func deleteFeature(_ feature: Feature) async {
         guard let project = selectedProject else { return }
 

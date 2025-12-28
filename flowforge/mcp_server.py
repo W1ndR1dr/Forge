@@ -639,6 +639,113 @@ class FlowForgeMCPServer:
             },
         )
 
+    def _smart_done_feature(self, project: str, feature_id: str) -> MCPToolResult:
+        """
+        Smart mark-as-done: detects if branch is merged and acts accordingly.
+
+        If branch is merged to main:
+          - Cleans up worktree (if exists)
+          - Sets status to COMPLETED
+          - Returns outcome="shipped"
+
+        If branch is not merged:
+          - Sets status to REVIEW
+          - Returns outcome="review"
+
+        If Mac is offline:
+          - Falls back to simple REVIEW transition (Pi-local operation)
+        """
+        from datetime import datetime
+
+        try:
+            project_path, config, registry = self._get_project_context(project)
+        except ValueError as e:
+            return MCPToolResult(success=False, message=str(e))
+
+        feature = registry.get_feature(feature_id)
+        if not feature:
+            return MCPToolResult(
+                success=False,
+                message=f"Feature not found: {feature_id}",
+            )
+
+        if feature.status != FeatureStatus.IN_PROGRESS:
+            return MCPToolResult(
+                success=False,
+                message=f"Feature is not in-progress (status: {feature.status.value})",
+            )
+
+        # Check if branch is merged to main (requires Mac)
+        branch_merged = False
+        worktree_cleaned = False
+        branch_name = feature.branch or f"feature/{feature_id}"
+        main_branch = config.project.main_branch
+
+        if self._check_mac_online():
+            # Check if branch is merged
+            result = self.remote_executor.get_merged_branches(project_path, main_branch)
+            if result.success:
+                # Parse branch list - each line is "  branch-name" or "* branch-name"
+                merged_branches = [
+                    b.strip().lstrip("* ") for b in result.stdout.strip().split("\n") if b.strip()
+                ]
+                branch_merged = branch_name in merged_branches
+
+            if branch_merged:
+                # Clean up worktree if it exists
+                worktree_path = project_path / ".flowforge-worktrees" / feature_id
+                if self.remote_executor.dir_exists(worktree_path):
+                    cleanup_result = self.remote_executor.remove_worktree(
+                        project_path, worktree_path, force=True
+                    )
+                    worktree_cleaned = cleanup_result.success
+
+        if branch_merged:
+            # Branch is merged - mark as completed (shipped)
+            registry.update_feature(
+                feature_id,
+                status=FeatureStatus.COMPLETED,
+                worktree_path=None,
+            )
+            # Set completed_at timestamp
+            updated_feature = registry.get_feature(feature_id)
+            if updated_feature:
+                updated_feature.completed_at = datetime.now()
+                registry._save()
+
+            self._save_registry(project, registry)
+
+            return MCPToolResult(
+                success=True,
+                message=f"Feature '{feature.title}' shipped!",
+                data={
+                    "feature_id": feature_id,
+                    "outcome": "shipped",
+                    "new_status": "completed",
+                    "worktree_removed": worktree_cleaned,
+                    "branch_name": branch_name,
+                },
+            )
+        else:
+            # Branch not merged (or Mac offline) - mark as review
+            registry.update_feature(feature_id, status=FeatureStatus.REVIEW)
+            self._save_registry(project, registry)
+
+            message = f"Feature '{feature.title}' marked for review"
+            if not self._check_mac_online():
+                message += " (Mac offline - merge status not checked)"
+
+            return MCPToolResult(
+                success=True,
+                message=message,
+                data={
+                    "feature_id": feature_id,
+                    "outcome": "review",
+                    "new_status": "review",
+                    "mac_online": self._check_mac_online(),
+                },
+            )
+
     def _merge_check(
         self,
         project: str,

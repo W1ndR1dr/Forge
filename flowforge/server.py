@@ -650,6 +650,27 @@ async def stop_feature(project: str, feature_id: str):
     return result.data
 
 
+@app.post("/api/{project}/features/{feature_id}/smart-done")
+async def smart_done_feature(project: str, feature_id: str):
+    """
+    Smart mark-as-done: detects if branch is merged and acts accordingly.
+
+    If branch is merged to main: cleans up worktree, marks as completed (shipped).
+    If branch not merged: marks as ready for review.
+    If Mac is offline: falls back to simple review transition.
+    """
+    result = mcp_server._smart_done_feature(project, feature_id)
+    if not result.success:
+        raise HTTPException(status_code=400, detail=result.message)
+
+    # Broadcast update based on outcome
+    outcome = result.data.get("outcome", "review")
+    action = "completed" if outcome == "shipped" else "stopped"
+    await ws_manager.broadcast_feature_update(project, feature_id, action)
+
+    return result.data
+
+
 @app.get("/api/{project}/merge-check")
 async def merge_check_all(project: str):
     """Check all features for merge readiness."""

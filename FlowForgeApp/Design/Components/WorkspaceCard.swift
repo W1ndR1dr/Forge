@@ -21,6 +21,12 @@ struct WorkspaceCard: View {
     @State private var isCheckingConflicts = false
     @State private var showingDeleteConfirmation = false
 
+    // Smart mark-done state
+    @State private var isMarkingDone = false
+    @State private var showDoneToast = false
+    @State private var doneToastMessage = ""
+    @State private var doneToastIsSuccess = true
+
     private let apiClient = APIClient()
 
     /// Status indicator color
@@ -162,15 +168,21 @@ struct WorkspaceCard: View {
                 .disabled(isLaunching || feature.worktreePath == nil)
                 #endif
 
+                #if os(macOS)
                 if feature.status == .inProgress {
-                    Button(action: onStop) {
-                        Label("Mark Done", systemImage: "checkmark.circle")
-                            .font(Typography.caption)
+                    Button(action: { Task { await markAsDone() } }) {
+                        Label(
+                            isMarkingDone ? "Processing..." : "Mark Done",
+                            systemImage: isMarkingDone ? "hourglass" : "checkmark.circle"
+                        )
+                        .font(Typography.caption)
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                     .tint(Accent.success)
+                    .disabled(isMarkingDone)
                 }
+                #endif
             }
         }
         .padding(Spacing.medium)
@@ -180,6 +192,23 @@ struct WorkspaceCard: View {
             RoundedRectangle(cornerRadius: CornerRadius.medium)
                 .stroke(hasConflicts ? Accent.warning.opacity(0.5) : statusColor.opacity(isHovered ? 0.5 : 0.2), lineWidth: hasConflicts ? 2 : 1)
         )
+        // Toast overlay for mark-done feedback
+        .overlay(alignment: .bottom) {
+            if showDoneToast {
+                HStack(spacing: Spacing.small) {
+                    Image(systemName: doneToastIsSuccess ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+                    Text(doneToastMessage)
+                }
+                .font(Typography.caption)
+                .padding(.horizontal, Spacing.medium)
+                .padding(.vertical, Spacing.small)
+                .background(doneToastIsSuccess ? Accent.success.opacity(0.95) : Accent.danger.opacity(0.95))
+                .foregroundColor(.white)
+                .clipShape(Capsule())
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .padding(.bottom, Spacing.small)
+            }
+        }
         .hoverable(isHovered: isHovered)
         .onHover { isHovered = $0 }
         .onAppear {
@@ -200,6 +229,43 @@ struct WorkspaceCard: View {
     // MARK: - Actions
 
     #if os(macOS)
+    /// Smart mark-as-done: detects if merged and shows appropriate feedback
+    @MainActor
+    private func markAsDone() async {
+        isMarkingDone = true
+        defer { isMarkingDone = false }
+
+        guard let outcome = await appState.smartDoneFeature(feature) else {
+            // Error case - show error toast
+            showToast(message: "Failed to mark done", isSuccess: false)
+            return
+        }
+
+        // Success - show appropriate toast based on outcome
+        if outcome == "shipped" {
+            showToast(message: "Shipped!", isSuccess: true)
+        } else {
+            showToast(message: "Marked for review", isSuccess: true)
+        }
+    }
+
+    /// Show a toast notification with auto-dismiss
+    private func showToast(message: String, isSuccess: Bool) {
+        doneToastMessage = message
+        doneToastIsSuccess = isSuccess
+
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            showDoneToast = true
+        }
+
+        // Auto-dismiss after 2 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            withAnimation {
+                showDoneToast = false
+            }
+        }
+    }
+
     /// Open Claude Code in the worktree directory
     @MainActor
     private func openInTerminal() async {

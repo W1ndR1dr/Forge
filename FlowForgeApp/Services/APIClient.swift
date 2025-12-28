@@ -95,6 +95,13 @@ actor APIClient {
         let _: EmptyResponse = try await post(url: url, body: [:])
     }
 
+    /// Smart mark-as-done: detects if branch is merged and acts accordingly.
+    /// Returns outcome: "shipped" (merged, cleaned up) or "review" (needs merge).
+    func smartDoneFeature(project: String, featureId: String) async throws -> SmartDoneResponse {
+        let url = baseURL.appendingPathComponent("api/\(project)/features/\(featureId)/smart-done")
+        return try await post(url: url, body: [:])
+    }
+
     // MARK: - Prompt Generation
 
     /// Get the implementation prompt for a feature
@@ -342,6 +349,23 @@ private struct FeatureListResponse: Decodable {
 
 private struct FeatureAddResponse: Decodable {
     let feature_id: String
+}
+
+/// Response from smart mark-as-done operation
+struct SmartDoneResponse: Decodable {
+    let outcome: String  // "shipped" or "review"
+    let newStatus: String
+    let featureId: String
+    let worktreeRemoved: Bool?
+    let macOnline: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case outcome
+        case newStatus = "new_status"
+        case featureId = "feature_id"
+        case worktreeRemoved = "worktree_removed"
+        case macOnline = "mac_online"
+    }
 }
 
 /// Response from starting a feature - contains worktree path and prompt for launching Claude Code
