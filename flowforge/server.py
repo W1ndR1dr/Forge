@@ -1776,6 +1776,12 @@ async def brainstorm_websocket(websocket: WebSocket, project: str):
             elif data.get("type") == "message":
                 user_message = data.get("content", "")
 
+                # Send immediate processing status for UI feedback
+                await websocket.send_json({
+                    "type": "status",
+                    "status": "processing",
+                })
+
                 # Stream the response
                 full_response = []
                 async for chunk in agent.send_message(user_message):

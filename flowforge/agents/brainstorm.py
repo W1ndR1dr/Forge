@@ -19,6 +19,10 @@ import re
 from dataclasses import dataclass, field
 from typing import AsyncGenerator, Optional
 
+# Prompt size limits to prevent hang with long conversations
+MAX_PROMPT_SIZE = 32000  # ~32KB limit for prompt
+MIN_MESSAGES_TO_KEEP = 4  # Always keep at least 4 most recent messages
+
 
 @dataclass
 class BrainstormMessage:
@@ -215,19 +219,48 @@ class BrainstormAgent:
             self.session.messages.append(BrainstormMessage(role="assistant", content=response_text))
 
     def _build_conversation_prompt(self, new_message: str) -> str:
-        """Build prompt with system prompt + conversation history."""
-        parts = [self.session.get_system_prompt()]
-        parts.append("\n\n---\n\nConversation:\n")
+        """Build prompt with system prompt + conversation history.
 
-        # Include all messages except the last user message (which is new_message)
-        for msg in self.session.messages[:-1]:  # Skip the message we just added
+        Truncates older messages if prompt would exceed MAX_PROMPT_SIZE.
+        Always keeps at least MIN_MESSAGES_TO_KEEP recent messages.
+        """
+        system_prompt = self.session.get_system_prompt()
+        base_parts = [system_prompt, "\n\n---\n\nConversation:\n"]
+        base_size = sum(len(p) for p in base_parts)
+
+        # Build messages list (excluding the just-added user message)
+        messages = self.session.messages[:-1]
+
+        # Always include the new user message at the end
+        new_msg_text = f"\nUser: {new_message}\n\nAssistant: "
+        available_size = MAX_PROMPT_SIZE - base_size - len(new_msg_text)
+
+        # Build message texts from newest to oldest
+        message_texts = []
+        for msg in reversed(messages):
             role_label = "User" if msg.role == "user" else "Assistant"
-            parts.append(f"\n{role_label}: {msg.content}\n")
+            msg_text = f"\n{role_label}: {msg.content}\n"
+            message_texts.append(msg_text)
 
-        # Add the new user message
-        parts.append(f"\nUser: {new_message}\n")
-        parts.append("\nAssistant: ")
+        # Select messages that fit, keeping at least MIN_MESSAGES_TO_KEEP
+        selected = []
+        total_size = 0
+        for i, msg_text in enumerate(message_texts):
+            if total_size + len(msg_text) > available_size and i >= MIN_MESSAGES_TO_KEEP:
+                break
+            selected.append(msg_text)
+            total_size += len(msg_text)
 
+        # Add truncation notice if we dropped messages
+        truncation_notice = ""
+        if len(selected) < len(message_texts):
+            dropped_count = len(message_texts) - len(selected)
+            truncation_notice = f"\n[{dropped_count} earlier messages omitted for brevity]\n"
+
+        # Reassemble in chronological order
+        selected.reverse()
+
+        parts = base_parts + [truncation_notice] + selected + [new_msg_text]
         return "".join(parts)
 
     def _parse_spec(self, response: str) -> Optional[SpecResult]:

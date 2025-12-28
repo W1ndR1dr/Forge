@@ -14,6 +14,7 @@ struct BrainstormChatView: View {
 
     @State private var inputText = ""
     @State private var showingSpec = false
+    @State private var isGeneratingSpec = false
     @FocusState private var isInputFocused: Bool
 
     let project: String
@@ -96,6 +97,12 @@ struct BrainstormChatView: View {
                 .environment(appState)
             }
         }
+        .onChange(of: client.isTyping) { _, isTyping in
+            // Reset spec generation state when typing completes
+            if !isTyping && isGeneratingSpec {
+                isGeneratingSpec = false
+            }
+        }
     }
 
     // MARK: - Header
@@ -134,6 +141,25 @@ struct BrainstormChatView: View {
             }
             .buttonStyle(.bordered)
             .help("Start fresh")
+
+            // Generate Spec button - only show after some conversation
+            if client.messages.count >= 2 && !client.isTyping && client.currentSpec == nil {
+                Button(action: generateSpec) {
+                    HStack(spacing: Spacing.micro) {
+                        if isGeneratingSpec {
+                            ProgressView()
+                                .scaleEffect(0.6)
+                        } else {
+                            Image(systemName: "sparkles")
+                        }
+                        Text("Generate Spec")
+                    }
+                }
+                .buttonStyle(.bordered)
+                .tint(Accent.primary)
+                .help("Generate spec from current conversation")
+                .disabled(isGeneratingSpec)
+            }
 
             Button("Done") {
                 dismiss()
@@ -293,6 +319,19 @@ struct BrainstormChatView: View {
 
         client.sendMessage(message)
         inputText = ""
+    }
+
+    private func generateSpec() {
+        isGeneratingSpec = true
+
+        // Send a message that triggers spec generation
+        let specRequest = """
+        Please generate the spec now based on our conversation so far. \
+        Even if we haven't covered every detail, create the best spec you can \
+        with the information we have discussed. Use the SPEC_READY format.
+        """
+
+        client.sendMessage(specRequest)
     }
 }
 

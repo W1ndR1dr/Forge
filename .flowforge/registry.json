@@ -730,7 +730,7 @@
     },
     "should-move-the-brain-button-and-the-plus-button-s": {
       "id": "should-move-the-brain-button-and-the-plus-button-s",
-      "title": "Quick Brainstorm Button (Contextual Idea Generator)",
+      "title": "Generate Ideas",
       "description": "Separates the capture UI into two distinct buttons: a + button for freetext quick capture, and a brain button that generates 3 contextual idea suggestions based on the project's existing features and recent commits. Users tap any suggestion to add it to the inbox instantly.\n\nHow it works:\n- + button opens existing quick capture input (freetext, low friction)\n- Brain button shows a popover with loading state (pulsing brain or skeleton chips)\n- Backend fetches: project name, existing feature titles, last ~15 git commits\n- AI generates 3 short-phrase ideas that don't duplicate existing/completed features\n- Ideas appear as tappable chips in the popover\n- Tapping a chip instantly adds it to inbox as \"idea\" status\n- User can tap brain again for 3 more if nothing resonates (magic 8-ball style)\n- Popover dismisses after selection or tap-outside\n\nFiles likely affected:\n- `FlowForgeApp/Views/VibeInput.swift` (split into + and brain buttons)\n- `flowforge/server.py` (new `/brainstorm/quick` endpoint)\n- `flowforge/intelligence.py` (quick brainstorm prompt generation)\n- `FlowForgeApp/Services/APIClient.swift` (new endpoint call)\n- `FlowForgeApp/Views/Components/BrainstormPopover.swift` (new view)\n\nEstimated scope: Medium (1-3 hours)",
       "status": "idea",
       "priority": 5,

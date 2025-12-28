@@ -298,6 +298,12 @@ final class BrainstormClient: ObservableObject {
             currentSpec = nil
             currentAssistantMessage = nil
 
+        case "status":
+            // Processing status from server - show typing indicator immediately
+            if let status = json["status"] as? String, status == "processing" {
+                isTyping = true
+            }
+
         case "error":
             if let errorMessage = json["message"] as? String {
                 lastError = NSError(domain: "BrainstormClient", code: -1, userInfo: [NSLocalizedDescriptionKey: errorMessage])
