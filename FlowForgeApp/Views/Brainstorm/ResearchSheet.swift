@@ -1,5 +1,8 @@
 import SwiftUI
 import UniformTypeIdentifiers
+#if os(macOS)
+import AppKit
+#endif
 
 /// Sheet for managing deep research for a feature.
 ///
@@ -156,8 +159,7 @@ struct ResearchSheet: View {
             Spacer()
 
             Button(action: {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(prompt, forType: .string)
+                PlatformPasteboard.copy(prompt)
             }) {
                 Label("Copy", systemImage: "doc.on.doc")
             }
@@ -203,10 +205,12 @@ struct ResearchSheet: View {
                 .font(Typography.body)
                 .foregroundColor(isDropTargeted ? Accent.primary : .secondary)
 
+            #if os(macOS)
             Button("Browse...") {
                 openFilePicker()
             }
             .buttonStyle(.bordered)
+            #endif
         }
         .frame(maxWidth: .infinity)
         .padding(Spacing.large)
@@ -377,7 +381,9 @@ struct ResearchSheet: View {
 
             do {
                 try content.write(to: fileURL, atomically: true, encoding: .utf8)
+                #if os(macOS)
                 NSWorkspace.shared.activateFileViewerSelecting([fileURL])
+                #endif
             } catch {
                 errorMessage = "Failed to save: \(error.localizedDescription)"
             }
@@ -411,6 +417,7 @@ struct ResearchSheet: View {
         }
     }
 
+    #if os(macOS)
     private func openFilePicker() {
         let panel = NSOpenPanel()
         panel.allowsMultipleSelection = true
@@ -429,6 +436,7 @@ struct ResearchSheet: View {
             }
         }
     }
+    #endif
 
     private func inferProviderFromFilename(_ filename: String) -> String {
         let lower = filename.lowercased()
