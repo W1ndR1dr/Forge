@@ -54,6 +54,7 @@ struct Feature: Identifiable, Codable, Hashable {
     var worktreePath: String?
     var promptPath: String?
     var createdAt: Date
+    var updatedAt: Date?
     var startedAt: Date?
     var completedAt: Date?
     var tags: [String]
@@ -90,6 +91,7 @@ struct Feature: Identifiable, Codable, Hashable {
         worktreePath: String? = nil,
         promptPath: String? = nil,
         createdAt: Date = Date(),
+        updatedAt: Date? = nil,
         startedAt: Date? = nil,
         completedAt: Date? = nil,
         tags: [String] = []
@@ -105,6 +107,7 @@ struct Feature: Identifiable, Codable, Hashable {
         self.worktreePath = worktreePath
         self.promptPath = promptPath
         self.createdAt = createdAt
+        self.updatedAt = updatedAt
         self.startedAt = startedAt
         self.completedAt = completedAt
         self.tags = tags
@@ -159,6 +162,12 @@ struct Feature: Identifiable, Codable, Hashable {
 
         let createdAtString = try container.decode(String.self, forKey: .createdAt)
         createdAt = parseDate(createdAtString) ?? Date()
+
+        if let updatedAtString = try container.decodeIfPresent(String.self, forKey: .updatedAt) {
+            updatedAt = parseDate(updatedAtString)
+        } else {
+            updatedAt = nil
+        }
 
         if let startedAtString = try container.decodeIfPresent(String.self, forKey: .startedAt) {
             startedAt = parseDate(startedAtString)

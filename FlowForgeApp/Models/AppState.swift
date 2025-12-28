@@ -257,8 +257,9 @@ class AppState {
         switch order {
         case .recentlyUsed:
             return items.sorted { a, b in
-                let timeA = featureAccessTimes[a.id] ?? (a.createdAt ?? .distantPast)
-                let timeB = featureAccessTimes[b.id] ?? (b.createdAt ?? .distantPast)
+                // Priority: local access time > updatedAt > createdAt
+                let timeA = featureAccessTimes[a.id] ?? a.updatedAt ?? a.createdAt
+                let timeB = featureAccessTimes[b.id] ?? b.updatedAt ?? b.createdAt
                 return timeA > timeB
             }
         case .alphabetical:
@@ -280,7 +281,7 @@ class AppState {
                 connectionState = .connected
                 isConnectedToServer = true
             } else {
-                connectionState = .piOnlyMode(pending: status.pendingOperations)
+                connectionState = .piOnlyMode(pending: status.pendingOperations ?? 0)
                 isConnectedToServer = true  // Pi is reachable, just Mac is offline
             }
         } catch {

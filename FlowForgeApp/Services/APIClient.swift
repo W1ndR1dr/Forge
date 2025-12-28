@@ -480,7 +480,7 @@ struct SystemStatus: Decodable {
     let macOnline: Bool
     let lastCheck: String?
     let lastSync: String?
-    let pendingOperations: Int
+    let pendingOperations: Int?
     let cacheStats: CacheStats?
 
     enum CodingKeys: String, CodingKey {
