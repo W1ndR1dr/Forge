@@ -1229,8 +1229,8 @@ class FlowForgeMCPServer:
                 if fid not in merged or f.get("updated_at", "") > merged[fid].get("updated_at", ""):
                     merged[fid] = f
 
-            # Save merged to both
-            merged_data = {**pi_data, "features": list(merged.values())}
+            # Save merged to both (Mac uses dict format {id: data})
+            merged_data = {**pi_data, "features": merged}
             merged_json = json.dumps(merged_data, indent=2, default=str)
 
             # Write to Mac
