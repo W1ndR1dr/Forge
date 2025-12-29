@@ -183,7 +183,11 @@ class PiRegistryManager:
             data = json.load(f)
 
         project_data = data.get("project", {})
-        project_config = ProjectConfig(**project_data)
+        # Filter to only known fields (handles schema migrations gracefully)
+        from dataclasses import fields
+        known_fields = {f.name for f in fields(ProjectConfig)}
+        filtered_project_data = {k: v for k, v in project_data.items() if k in known_fields}
+        project_config = ProjectConfig(**filtered_project_data)
 
         return FlowForgeConfig(
             project=project_config,
