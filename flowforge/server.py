@@ -413,6 +413,8 @@ async def get_project_health(project: str):
     """
     Check project health - compare registry state to actual git state.
 
+    Uses Pi-local registry for feature data. Git operations require Mac online.
+
     Detects:
     - Branches merged but feature status != completed
     - Worktree paths set but directories missing
@@ -422,24 +424,11 @@ async def get_project_health(project: str):
     - healthy: bool
     - issues: list of detected problems with suggested fixes
     """
-    config = get_config()
-    project_path = config["projects_base"] / project
-
-    # In remote mode, translate to Mac path for git operations
-    if remote_executor and path_translator:
-        mac_project_path = Path(path_translator.resolve_for_mac(str(project_path)))
-    else:
-        mac_project_path = project_path
-
-    # Check if project exists (local or remote)
-    if remote_executor:
-        if not remote_executor.dir_exists(mac_project_path / ".flowforge"):
-            raise HTTPException(status_code=404, detail=f"Project not found: {project}")
-    else:
-        if not (project_path / ".flowforge").exists():
-            raise HTTPException(status_code=404, detail=f"Project not found: {project}")
-
-    registry = FeatureRegistry.load(project_path)
+    # Get project context from Pi-local storage
+    try:
+        mac_project_path, config, registry = mcp_server._get_project_context(project)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     issues = []
 
     # Get merged branches (local or remote)
@@ -455,7 +444,7 @@ async def get_project_health(project: str):
         else:
             result = subprocess.run(
                 ["git", "branch", "--merged", "main"],
-                cwd=project_path,
+                cwd=mac_project_path,
                 capture_output=True,
                 text=True,
             )
@@ -484,7 +473,7 @@ async def get_project_health(project: str):
                             worktree_paths.add(current_path)
                         current_path = None
         else:
-            worktree_manager = WorktreeManager(project_path)
+            worktree_manager = WorktreeManager(mac_project_path)
             worktrees = worktree_manager.list_worktrees()
             worktree_paths = {wt.path for wt in worktrees if not wt.is_main}
     except Exception:
@@ -561,16 +550,16 @@ async def reconcile_feature(project: str, feature_id: str, request: ReconcileReq
     Actions:
     - mark_completed: Update status to completed, clear worktree/branch
     - clear_worktree: Just clear the worktree_path field
+
+    Uses Pi-local registry for feature data.
     """
-    config = get_config()
-    project_path = config["projects_base"] / project
+    # Get project context from Pi-local storage
+    try:
+        mac_path, config, registry = mcp_server._get_project_context(project)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
-    if not (project_path / ".flowforge").exists():
-        raise HTTPException(status_code=404, detail=f"Project not found: {project}")
-
-    registry = FeatureRegistry.load(project_path)
     feature = registry.get_feature(feature_id)
-
     if not feature:
         raise HTTPException(status_code=404, detail=f"Feature not found: {feature_id}")
 
@@ -948,6 +937,8 @@ async def get_git_status(project: str, feature_id: str):
     """
     Get git status for a feature's worktree.
 
+    Uses Pi-local registry for feature data. Git operations require Mac online.
+
     Returns:
     - exists: whether the worktree exists
     - has_changes: whether there are uncommitted changes
@@ -955,30 +946,87 @@ async def get_git_status(project: str, feature_id: str):
     - ahead_of_main: commits ahead of main
     - behind_main: commits behind main
     """
-    config = get_config()
-    project_path = config["projects_base"] / project
+    # Get project context from Pi-local storage
+    try:
+        mac_path, config, registry = mcp_server._get_project_context(project)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
-    if not (project_path / ".flowforge").exists():
-        raise HTTPException(status_code=404, detail=f"Project not found: {project}")
-
-    registry = FeatureRegistry.load(project_path)
     feature = registry.get_feature(feature_id)
-
     if not feature:
         raise HTTPException(status_code=404, detail=f"Feature not found: {feature_id}")
 
-    # Get worktree status
-    worktree_manager = WorktreeManager(project_path)
-    status = worktree_manager.get_status(feature_id)
+    # Check if Mac is online for git operations
+    mac_online = mcp_server._check_mac_online() if mcp_server else True
 
-    return {
-        "exists": status.exists,
-        "has_changes": status.has_changes,
-        "changes": status.changes,
-        "commit_count": status.commit_count,
-        "ahead_of_main": status.ahead_of_main,
-        "behind_main": status.behind_main,
-    }
+    if remote_executor:
+        # Remote mode - need Mac online for git status
+        if not mac_online:
+            return {
+                "exists": False,
+                "has_changes": False,
+                "changes": [],
+                "commit_count": 0,
+                "ahead_of_main": 0,
+                "behind_main": 0,
+                "mac_offline": True,
+            }
+
+        # Run git status via SSH
+        worktree_path = feature.worktree_path
+        if not worktree_path:
+            return {
+                "exists": False,
+                "has_changes": False,
+                "changes": [],
+                "commit_count": 0,
+                "ahead_of_main": 0,
+                "behind_main": 0,
+            }
+
+        full_worktree_path = mac_path / worktree_path
+
+        # Check if worktree exists
+        if not remote_executor.dir_exists(full_worktree_path):
+            return {
+                "exists": False,
+                "has_changes": False,
+                "changes": [],
+                "commit_count": 0,
+                "ahead_of_main": 0,
+                "behind_main": 0,
+            }
+
+        # Get git status via SSH
+        status_result = remote_executor.run_command(
+            ["git", "-C", str(full_worktree_path), "status", "--porcelain"],
+            timeout=10
+        )
+        changes = []
+        if status_result.success and status_result.stdout.strip():
+            changes = [line.strip() for line in status_result.stdout.strip().split("\n") if line.strip()]
+
+        return {
+            "exists": True,
+            "has_changes": len(changes) > 0,
+            "changes": changes,
+            "commit_count": 0,  # Would need additional git commands
+            "ahead_of_main": 0,
+            "behind_main": 0,
+        }
+    else:
+        # Local mode (running on Mac) - use WorktreeManager directly
+        worktree_manager = WorktreeManager(mac_path)
+        status = worktree_manager.get_status(feature_id)
+
+        return {
+            "exists": status.exists,
+            "has_changes": status.has_changes,
+            "changes": status.changes,
+            "commit_count": status.commit_count,
+            "ahead_of_main": status.ahead_of_main,
+            "behind_main": status.behind_main,
+        }
 
 
 # =============================================================================
@@ -988,29 +1036,108 @@ async def get_git_status(project: str, feature_id: str):
 
 @app.get("/api/{project}/features/{feature_id}/prompt")
 async def get_feature_prompt(project: str, feature_id: str):
-    """Generate and return implementation prompt for a feature."""
-    config = get_config()
-    project_path = config["projects_base"] / project
+    """
+    Generate and return implementation prompt for a feature.
 
-    if not (project_path / ".flowforge").exists():
-        raise HTTPException(status_code=404, detail=f"Project not found: {project}")
+    Uses Pi-local registry for feature data. Reads Mac files via SSH
+    for full prompt generation (requires Mac online).
+    """
+    # Get project context from Pi-local storage
+    try:
+        mac_path, config, registry = mcp_server._get_project_context(project)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
-    registry = FeatureRegistry.load(project_path)
     feature = registry.get_feature(feature_id)
-
     if not feature:
         raise HTTPException(status_code=404, detail=f"Feature not found: {feature_id}")
 
-    intelligence = IntelligenceEngine(project_path)
-    prompt_builder = PromptBuilder(project_path, registry, intelligence)
+    # Check if Mac is online for file reading
+    mac_online = mcp_server._check_mac_online() if mcp_server else True
 
-    prompt = prompt_builder.build_for_feature(
-        feature_id,
-        include_experts=True,
-        include_research=True,
-    )
+    if remote_executor and mac_online:
+        # Remote mode with Mac online - read files via SSH
+        claude_md_content = ""
+        claude_md_path = mac_path / "CLAUDE.md"
+        content = remote_executor.read_file(claude_md_path)
+        if content:
+            claude_md_content = content
+
+        spec_content = ""
+        if feature.spec_path:
+            spec_path = mac_path / feature.spec_path
+            content = remote_executor.read_file(spec_path)
+            if content:
+                spec_content = content
+
+        # Build prompt with available content
+        prompt = _build_prompt_from_parts(
+            feature=feature,
+            claude_md_content=claude_md_content,
+            spec_content=spec_content,
+            project_name=project,
+        )
+    elif remote_executor and not mac_online:
+        # Remote mode but Mac offline - return basic prompt
+        prompt = _build_prompt_from_parts(
+            feature=feature,
+            claude_md_content="",
+            spec_content="",
+            project_name=project,
+            mac_offline=True,
+        )
+    else:
+        # Local mode (running on Mac) - use PromptBuilder directly
+        intelligence = IntelligenceEngine(mac_path)
+        prompt_builder = PromptBuilder(mac_path, registry, intelligence)
+        prompt = prompt_builder.build_for_feature(
+            feature_id,
+            include_experts=True,
+            include_research=True,
+        )
 
     return {"prompt": prompt, "feature_id": feature_id}
+
+
+def _build_prompt_from_parts(
+    feature: Feature,
+    claude_md_content: str,
+    spec_content: str,
+    project_name: str,
+    mac_offline: bool = False,
+) -> str:
+    """Build implementation prompt from parts (for remote mode)."""
+    parts = []
+
+    if mac_offline:
+        parts.append(
+            "⚠️ Note: Mac is offline. This is a basic prompt without project context.\n"
+            "For full context, ensure your Mac is online and accessible.\n"
+        )
+
+    parts.append(f"# Implement: {feature.title}\n")
+
+    if feature.description:
+        parts.append(f"## Description\n{feature.description}\n")
+
+    if spec_content:
+        parts.append(f"## Specification\n{spec_content}\n")
+
+    if claude_md_content:
+        parts.append(f"## Project Context\n{claude_md_content}\n")
+
+    if feature.key_files:
+        parts.append("## Key Files\n" + "\n".join(f"- {f}" for f in feature.key_files) + "\n")
+
+    parts.append(
+        "\n## Instructions\n"
+        "1. Read and understand the existing codebase patterns\n"
+        "2. Implement the feature following project conventions\n"
+        "3. Test your changes thoroughly\n"
+        "4. Commit with a clear message describing what was done\n"
+    )
+
+    return "\n".join(parts)
 
 
 # =============================================================================
