@@ -128,8 +128,15 @@ class PiRegistryManager:
         with open(registry_path) as f:
             data = json.load(f)
 
-        for fid, fdata in data.get("features", {}).items():
-            registry._features[fid] = Feature.from_dict(fdata)
+        # Handle both dict and list format for features
+        features = data.get("features", {})
+        if isinstance(features, dict):
+            for fid, fdata in features.items():
+                registry._features[fid] = Feature.from_dict(fdata)
+        else:
+            # List format - extract id from each item
+            for fdata in features:
+                registry._features[fdata["id"]] = Feature.from_dict(fdata)
 
         for item in data.get("merge_queue", []):
             registry._merge_queue.append(MergeQueueItem(**item))
