@@ -209,11 +209,11 @@ fi
 CHANGED_FILES=$(git diff --name-only HEAD~10..HEAD -- FlowForgeApp/ 2>/dev/null | head -30)
 
 if command -v claude &> /dev/null; then
-    LLM_RESPONSE=$(cat << PROMPT | claude --print 2>/dev/null
-You are a release engineer for FlowForge, a vibecoder's development workflow tool.
+    # Build prompt with variables pre-expanded (heredoc quoting prevents expansion)
+    PROMPT_TEXT="You are a release engineer for FlowForge, a vibecoder's development workflow tool.
 
 TASK: Analyze these commits and provide:
-1. macOS Sparkle release notes (2-4 friendly bullet points)
+1. macOS Sparkle release notes - 2-4 friendly bullet points
 2. Platform impact assessment
 3. Any concerns or sanity checks
 
@@ -225,27 +225,27 @@ $CHANGED_FILES
 
 RESPOND IN THIS EXACT FORMAT:
 ---NOTES---
-• [bullet 1]
-• [bullet 2]
-• [etc]
+- bullet 1
+- bullet 2
+- etc
 ---PLATFORMS---
-ios: [yes/no] - [brief reason]
-macos: [yes/no] - [brief reason]
+ios: yes or no - brief reason
+macos: yes or no - brief reason
 ---SANITY---
-[Any concerns, or 'All clear' if none. Check for: breaking changes, missing companion deploy, version mismatches, incomplete features]
+Any concerns, or All clear if none. Check for: breaking changes, missing companion deploy, version mismatches, incomplete features
 ---END---
 
 Style for notes:
-- Friendly, encouraging (for indie devs who vibe-code)
+- Friendly, encouraging tone for indie devs
 - Focus on user benefits, not technical details
 - Keep each bullet under 80 chars
-- Use emoji sparingly (1-2 max)
-- macOS-specific notes only (no iOS-only features)
-PROMPT
-)
+- Use emoji sparingly, 1-2 max
+- macOS-specific notes only, no iOS-only features"
+
+    LLM_RESPONSE=$(echo "$PROMPT_TEXT" | claude --print 2>/dev/null)
 
     # Parse LLM response
-    RELEASE_NOTES=$(echo "$LLM_RESPONSE" | sed -n '/---NOTES---/,/---PLATFORMS---/p' | grep -E '^•' | head -5)
+    RELEASE_NOTES=$(echo "$LLM_RESPONSE" | sed -n '/---NOTES---/,/---PLATFORMS---/p' | grep -E '^-' | sed 's/^- /• /' | head -5)
     DEPLOY_IOS_TOO=$(echo "$LLM_RESPONSE" | sed -n '/---PLATFORMS---/,/---SANITY---/p' | grep -i "ios: yes" | head -1)
     SANITY_CHECK=$(echo "$LLM_RESPONSE" | sed -n '/---SANITY---/,/---END---/p' | grep -v "^---" | head -3)
 
