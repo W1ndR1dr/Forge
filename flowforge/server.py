@@ -1126,8 +1126,10 @@ def _build_prompt_from_parts(
     if claude_md_content:
         parts.append(f"## Project Context\n{claude_md_content}\n")
 
-    if feature.key_files:
-        parts.append("## Key Files\n" + "\n".join(f"- {f}" for f in feature.key_files) + "\n")
+    # Check extensions for key_files (may be set during refinement)
+    key_files = feature.extensions.get("key_files") if feature.extensions else None
+    if key_files:
+        parts.append("## Key Files\n" + "\n".join(f"- {f}" for f in key_files) + "\n")
 
     parts.append(
         "\n## Instructions\n"
