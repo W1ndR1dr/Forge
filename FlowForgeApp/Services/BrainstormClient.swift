@@ -265,9 +265,10 @@ final class BrainstormClient: ObservableObject {
             if let content = json["content"] as? String {
                 streamingBuffer += content
 
-                // Only update UI every 50ms to prevent performance issues
+                // Only update UI every 100ms to prevent layout hangs
+                // SwiftUI Text layout with textSelection can be expensive
                 let now = Date()
-                if now.timeIntervalSince(lastStreamUpdate) > 0.05 {
+                if now.timeIntervalSince(lastStreamUpdate) > 0.1 {
                     streamingText = streamingBuffer
                     lastStreamUpdate = now
                 }

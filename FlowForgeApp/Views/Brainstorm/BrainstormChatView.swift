@@ -421,15 +421,17 @@ struct MessageBubble: View {
                         .foregroundColor(.secondary)
                 }
 
-                // Message content - constrain width to avoid layout explosion
+                // Message content - use fixed size + geometry to avoid layout explosion
+                // textSelection causes hangs with LazyVStack - only enable for completed messages
                 Text(textToShow)
                     .font(Typography.body)
                     .padding(Spacing.medium)
                     .frame(maxWidth: 500, alignment: message.role == .user ? .trailing : .leading)
+                    .fixedSize(horizontal: false, vertical: true)
                     .background(message.role == .user ? Accent.primary : Surface.elevated)
                     .foregroundColor(message.role == .user ? .white : .primary)
                     .cornerRadius(CornerRadius.large)
-                    .textSelection(.enabled)
+                    .textSelection(displayText == nil ? .enabled : .disabled)
             }
 
             if message.role == .assistant {
