@@ -27,9 +27,11 @@ struct WorkspaceCard: View {
     @State private var doneToastMessage = ""
     @State private var doneToastIsSuccess = true
 
-    // Ship confirmation state
+    // Ship confirmation state (macOS only)
+    #if os(macOS)
     @State private var isShipping = false
     @State private var showingShipConfirmation = false
+    #endif
 
     private let apiClient = APIClient()
 
@@ -243,6 +245,7 @@ struct WorkspaceCard: View {
         } message: {
             Text("Delete \"\(feature.title)\"? This will remove the feature and clean up the worktree.")
         }
+        #if os(macOS)
         .confirmationDialog(
             "Ship Feature?",
             isPresented: $showingShipConfirmation,
@@ -253,6 +256,7 @@ struct WorkspaceCard: View {
         } message: {
             Text("Clean up worktree and mark \"\(feature.title)\" as shipped? Make sure you've pushed your changes first.")
         }
+        #endif
     }
 
     // MARK: - Actions
