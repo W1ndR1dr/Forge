@@ -1815,6 +1815,7 @@ brainstorm_sessions: dict = {}
 # Extension key migration: crystallization_history → refinement_history
 _OLD_HISTORY_KEY = "crystallization_history"
 _NEW_HISTORY_KEY = "refinement_history"
+_SESSION_ID_KEY = "claude_code_session_id"
 
 
 def _get_session_key(project: str, feature_id: Optional[str] = None) -> str:
@@ -1856,6 +1857,37 @@ def _save_feature_history(project_name: str, feature_id: str, messages: list[dic
             mcp_server._save_registry(project_name, registry)
     except Exception as e:
         print(f"Failed to save refinement history: {e}")
+
+
+def _load_feature_session_id(project_name: str, feature_id: str) -> Optional[str]:
+    """Load Claude Code session ID from a feature's extensions."""
+    try:
+        project_path, config, registry = mcp_server._get_project_context(project_name)
+        feature = registry.get_feature(feature_id)
+        if feature and feature.extensions:
+            return feature.extensions.get(_SESSION_ID_KEY)
+    except Exception:
+        pass
+    return None
+
+
+def _save_feature_session_id(project_name: str, feature_id: str, session_id: Optional[str]) -> None:
+    """Save or clear Claude Code session ID in a feature's extensions."""
+    try:
+        project_path, config, registry = mcp_server._get_project_context(project_name)
+        feature = registry.get_feature(feature_id)
+        if feature:
+            if feature.extensions is None:
+                feature.extensions = {}
+            if session_id:
+                feature.extensions[_SESSION_ID_KEY] = session_id
+            else:
+                # Clear session_id if None/empty
+                feature.extensions.pop(_SESSION_ID_KEY, None)
+            registry.update_feature(feature_id, extensions=feature.extensions)
+            mcp_server._save_registry(project_name, registry)
+    except Exception as e:
+        print(f"Failed to save session ID: {e}")
 
 
 @app.websocket("/ws/{project}/brainstorm")
@@ -1943,18 +1975,21 @@ async def brainstorm_websocket(websocket: WebSocket, project: str):
                 # Update session key for feature-specific refinement
                 session_key = _get_session_key(project, refining_feature_id)
 
-                # Load existing history from the feature record
+                # Load existing history and session_id from the feature record
                 existing_history = []
+                existing_session_id = None
                 if refining_feature_id:
                     existing_history = _load_feature_history(project, refining_feature_id)
+                    existing_session_id = _load_feature_session_id(project, refining_feature_id)
 
-                # Create session with feature context (and existing history)
+                # Create session with feature context (and existing history/session)
                 brainstorm_sessions[session_key] = BrainstormAgent(
                     project_name=project,
                     project_context=project_context,
                     existing_features=existing_features,
                     existing_feature_title=refining_feature_title,
-                    existing_history=existing_history,  # Resume from saved history
+                    existing_history=existing_history,  # For UI display
+                    existing_session_id=existing_session_id,  # For --resume
                 )
                 agent = brainstorm_sessions[session_key]
 
@@ -1990,13 +2025,17 @@ async def brainstorm_websocket(websocket: WebSocket, project: str):
                     "content": "".join(full_response),
                 })
 
-                # Persist history if refining a feature
+                # Persist history and session_id if refining a feature
                 if refining_feature_id:
                     messages = [
                         {"role": msg.role, "content": msg.content}
                         for msg in agent.session.messages
                     ]
                     _save_feature_history(project, refining_feature_id, messages)
+
+                    # Save Claude Code session_id for future --resume
+                    if agent.session.claude_session_id:
+                        _save_feature_session_id(project, refining_feature_id, agent.session.claude_session_id)
 
                 # Check if spec is ready
                 if agent.is_spec_ready():
@@ -2016,9 +2055,10 @@ async def brainstorm_websocket(websocket: WebSocket, project: str):
                 )
                 agent = brainstorm_sessions[session_key]
 
-                # Clear persisted history if refining
+                # Clear persisted history and session_id if refining
                 if refining_feature_id:
                     _save_feature_history(project, refining_feature_id, [])
+                    _save_feature_session_id(project, refining_feature_id, None)
 
                 await websocket.send_json({
                     "type": "session_reset",

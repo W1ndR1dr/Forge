@@ -7,10 +7,11 @@ subscription (NOT API keys - uses the CLI which routes through Max).
 
 Key CLI flags used:
 - `--tools ""` - Chat-only mode, no file/bash access (pure conversation)
-- `--output-format text` - Simple text streaming via stdout chunks
+- `--output-format stream-json` - Real-time streaming with session metadata
+- `--resume <session_id>` - Continue existing conversation natively
 
-The conversation history is rebuilt in each prompt. This is slightly less
-efficient than using --resume, but more reliable across reconnections.
+Uses Claude Code's native session management for multi-turn conversations.
+Falls back to prompt rebuild if session expires or is unavailable.
 """
 
 import asyncio
@@ -62,6 +63,7 @@ class BrainstormSession:
     messages: list[BrainstormMessage] = field(default_factory=list)
     spec_ready: bool = False
     current_spec: Optional[SpecResult] = None
+    claude_session_id: Optional[str] = None  # Claude Code session for --resume
 
     @property
     def is_refining(self) -> bool:
@@ -106,12 +108,14 @@ class BrainstormAgent:
         existing_features: Optional[list[str]] = None,
         existing_feature_title: Optional[str] = None,
         existing_history: Optional[list[dict]] = None,
+        existing_session_id: Optional[str] = None,
     ):
         self.session = BrainstormSession(
             project_name=project_name,
             project_context=project_context,
             existing_features=existing_features or [],
             existing_feature_title=existing_feature_title,
+            claude_session_id=existing_session_id,
         )
 
         # Load existing history if provided (for UI display)
@@ -148,23 +152,40 @@ class BrainstormAgent:
         """
         Run Claude CLI and stream the response.
 
-        Uses:
-        - `--tools ""` for chat-only mode (no file access)
-        - `--output-format text` for streaming (reads stdout in chunks)
-        - `--append-system-prompt` for brainstorm instructions
+        Uses Claude Code's native session management:
+        - If we have a session_id, use --resume for fast continuation
+        - Otherwise, start a new session with system prompt
+        - Falls back to prompt rebuild if --resume fails
 
-        Note: We rebuild the conversation in the prompt each time since
-        --resume requires session persistence on the Pi, which may not
-        be reliable. This trades efficiency for reliability.
+        Uses stream-json format to get real-time streaming + session_id.
         """
-        # Build full prompt with conversation history
-        full_prompt = self._build_conversation_prompt(user_message)
+        # Try --resume first if we have a session
+        if self.session.claude_session_id:
+            success = False
+            async for chunk in self._try_resume_session(user_message):
+                if chunk == "__RESUME_FAILED__":
+                    # Fall back to new session
+                    print(f"Warning: --resume failed for session {self.session.claude_session_id}, falling back")
+                    self.session.claude_session_id = None
+                    break
+                success = True
+                yield chunk
 
+            if success:
+                return
+
+        # No session or fallback: start new session with full system prompt
+        async for chunk in self._start_new_session(user_message):
+            yield chunk
+
+    async def _try_resume_session(self, user_message: str) -> AsyncGenerator[str, None]:
+        """Try to resume an existing Claude Code session."""
         cmd = [
             "claude",
-            "-p", full_prompt,
-            "--tools", "",  # Chat-only, no file access
-            "--output-format", "text",
+            "-p", user_message,  # Just the new message!
+            "--resume", self.session.claude_session_id,
+            "--output-format", "stream-json",
+            "--tools", "",
         ]
 
         process = await asyncio.create_subprocess_exec(
@@ -174,49 +195,128 @@ class BrainstormAgent:
         )
 
         full_response = []
-        timeout_seconds = 120  # 2 minute timeout for large prompts
+        async for chunk in self._parse_stream_events(process, full_response):
+            yield chunk
+
+        # Check for failure
+        if process.returncode != 0:
+            yield "__RESUME_FAILED__"
+            return
+
+        # Store the response
+        response_text = "".join(full_response)
+        if response_text:
+            self.session.messages.append(BrainstormMessage(role="assistant", content=response_text))
+
+    async def _start_new_session(self, user_message: str) -> AsyncGenerator[str, None]:
+        """Start a new Claude Code session with full system prompt."""
+        # Build initial prompt with system context
+        prompt = self._build_initial_prompt(user_message)
+
+        cmd = [
+            "claude",
+            "-p", prompt,
+            "--output-format", "stream-json",
+            "--tools", "",
+        ]
+
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+
+        full_response = []
+        async for chunk in self._parse_stream_events(process, full_response):
+            yield chunk
+
+        # Check for errors
+        if process.returncode != 0:
+            stderr = await process.stderr.read()
+            if stderr:
+                error_msg = stderr.decode("utf-8", errors="replace")
+                print(f"Claude CLI error: {error_msg}")
+
+        # Store the response
+        response_text = "".join(full_response)
+        if response_text:
+            self.session.messages.append(BrainstormMessage(role="assistant", content=response_text))
+
+    async def _parse_stream_events(
+        self,
+        process: asyncio.subprocess.Process,
+        full_response: list[str],
+    ) -> AsyncGenerator[str, None]:
+        """Parse stream-json events from Claude CLI output."""
+        timeout_seconds = 180  # 3 minute overall timeout
+        start_time = asyncio.get_event_loop().time()
+        buffer = ""
 
         try:
-            # Read stdout in chunks for streaming effect
-            start_time = asyncio.get_event_loop().time()
             while True:
                 try:
                     chunk = await asyncio.wait_for(
-                        process.stdout.read(100),
-                        timeout=30  # 30 sec timeout per chunk (allows for slow starts)
+                        process.stdout.read(1024),
+                        timeout=60  # 60 sec per chunk (Claude can think for a while)
                     )
                 except asyncio.TimeoutError:
-                    # Check total time
                     elapsed = asyncio.get_event_loop().time() - start_time
                     if elapsed > timeout_seconds:
-                        yield "\n\n[Timeout - Claude is taking too long. Try a shorter prompt.]"
+                        yield "\n\n[Timeout - Claude is taking too long]"
                         process.kill()
                         break
-                    continue  # Keep waiting for next chunk
+                    continue
 
                 if not chunk:
                     break
 
-                text = chunk.decode("utf-8", errors="replace")
-                full_response.append(text)
-                yield text
+                buffer += chunk.decode("utf-8", errors="replace")
+
+                # Process complete lines (newline-delimited JSON)
+                while "\n" in buffer:
+                    line, buffer = buffer.split("\n", 1)
+                    line = line.strip()
+                    if not line:
+                        continue
+
+                    try:
+                        event = json.loads(line)
+                        event_type = event.get("type", "")
+
+                        if event_type == "start":
+                            # Capture session_id for future --resume
+                            session_id = event.get("session_id")
+                            if session_id:
+                                self.session.claude_session_id = session_id
+
+                        elif event_type == "text":
+                            # Stream text to client
+                            content = event.get("content", "")
+                            if content:
+                                full_response.append(content)
+                                yield content
+
+                        elif event_type == "end":
+                            # Session complete
+                            pass
+
+                        # Ignore tool_use, tool_result events (chat-only mode)
+
+                    except json.JSONDecodeError:
+                        # Not valid JSON, might be partial - continue
+                        pass
 
             # Wait for process to complete
             await asyncio.wait_for(process.wait(), timeout=10)
+
         except asyncio.TimeoutError:
-            yield "\n\n[Process timeout - killing Claude CLI]"
+            yield "\n\n[Process timeout]"
             process.kill()
 
-        # Check stderr for errors
-        stderr = await process.stderr.read()
-        if stderr and process.returncode != 0:
-            error_msg = stderr.decode("utf-8", errors="replace")
-            print(f"Claude CLI stderr: {error_msg}")
-
-        # Store the full response
-        response_text = "".join(full_response)
-        if response_text:
-            self.session.messages.append(BrainstormMessage(role="assistant", content=response_text))
+    def _build_initial_prompt(self, user_message: str) -> str:
+        """Build the initial prompt with system context for a new session."""
+        system_prompt = self.session.get_system_prompt()
+        return f"{system_prompt}\n\n---\n\nUser: {user_message}"
 
     def _build_conversation_prompt(self, new_message: str) -> str:
         """Build prompt with system prompt + conversation history.
