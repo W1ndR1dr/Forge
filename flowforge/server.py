@@ -1176,6 +1176,7 @@ async def get_feature_prompt(project: str, feature_id: str):
         prompt_builder = PromptBuilder(mac_path, registry, intelligence)
         prompt = prompt_builder.build_for_feature(
             feature_id,
+            config.project.claude_md_path,  # Was missing - caused "No CLAUDE.md found"
             include_experts=True,
             include_research=True,
         )
