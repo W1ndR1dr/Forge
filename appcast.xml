@@ -7,25 +7,24 @@
         <language>en</language>
 
         <item>
-            <title>FlowForge 1.3.0</title>
+            <title>FlowForge 1.3.1</title>
             <description><![CDATA[
-                <h2>What's New in 1.3.0</h2>
+                <h2>What's New in 1.3.1</h2>
                 <ul>
 ---NOTES---
-                    <li>Fixed registry sync between Mac and Pi (34 features preserved!)</li>
-                    <li>Better handling of feature format variations</li>
-                    <li>API discovery and worktree cleanup improvements</li>
-                    <li>Registry operations now more reliable</li>
+                    <li>Fixed brainstorm chat sessions to properly resume conversations</li>
+                    <li>Better multi-turn chat support with native Claude Code features</li>
+---PLATFORMS---
                 </ul>
             ]]></description>
-            <pubDate>Mon, 29 Dec 2025 16:01:19 -0800</pubDate>
+            <pubDate>Mon, 29 Dec 2025 19:42:41 -0800</pubDate>
             <sparkle:version>1</sparkle:version>
-            <sparkle:shortVersionString>1.3.0</sparkle:shortVersionString>
+            <sparkle:shortVersionString>1.3.1</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <enclosure
-                url="https://github.com/W1ndR1dr/FlowForge/releases/download/v1.3.0/FlowForge-1.3.0.zip"
-                sparkle:edSignature="sparkle:edSignature="yVZTbCi9iqRV6C4VZ8J6//jefiAxEZPK1Wut7WHv7hSLR+spa1bAkNRRAWQNpWQWVIH9cmhV6qRRsxjXBF8vBQ==" length="2535453""
-                length="2535453"
+                url="https://github.com/W1ndR1dr/FlowForge/releases/download/v1.3.1/FlowForge-1.3.1.zip"
+                sparkle:edSignature="sparkle:edSignature="JN0R9PG3CY3b1zFaJdqjg7UPKjFfR67Z2n6hQG8aAtKKDUO3Dn9G3E4sqkxNZB5fapyp27rZpfTwAsbhsDF+AQ==" length="2535454""
+                length="2535454"
                 type="application/octet-stream"/>
         </item>
 
