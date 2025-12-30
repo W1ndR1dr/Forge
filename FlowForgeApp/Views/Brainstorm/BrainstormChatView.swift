@@ -402,6 +402,30 @@ struct MessageBubble: View {
         return text.isEmpty ? "..." : text
     }
 
+    /// Whether this is a completed message (not streaming)
+    private var isCompleted: Bool {
+        displayText == nil
+    }
+
+    @ViewBuilder
+    private var messageContent: some View {
+        let baseText = Text(textToShow)
+            .font(Typography.body)
+            .padding(Spacing.medium)
+            .frame(maxWidth: 500, alignment: message.role == .user ? .trailing : .leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .background(message.role == .user ? Accent.primary : Surface.elevated)
+            .foregroundColor(message.role == .user ? .white : .primary)
+            .cornerRadius(CornerRadius.large)
+
+        // Only enable text selection for completed messages to avoid layout hangs
+        if isCompleted {
+            baseText.textSelection(.enabled)
+        } else {
+            baseText
+        }
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: Spacing.medium) {
             if message.role == .user {
@@ -421,17 +445,9 @@ struct MessageBubble: View {
                         .foregroundColor(.secondary)
                 }
 
-                // Message content - use fixed size + geometry to avoid layout explosion
-                // textSelection causes hangs with LazyVStack - only enable for completed messages
-                Text(textToShow)
-                    .font(Typography.body)
-                    .padding(Spacing.medium)
-                    .frame(maxWidth: 500, alignment: message.role == .user ? .trailing : .leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .background(message.role == .user ? Accent.primary : Surface.elevated)
-                    .foregroundColor(message.role == .user ? .white : .primary)
-                    .cornerRadius(CornerRadius.large)
-                    .textSelection(displayText == nil ? .enabled : .disabled)
+                // Message content - use fixed size to avoid layout explosion
+                // textSelection causes hangs with LazyVStack during streaming
+                messageContent
             }
 
             if message.role == .assistant {
