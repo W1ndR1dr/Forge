@@ -1,4 +1,4 @@
-# Implement: Unified Apple-Native Design System
+# Implement: Linear-Style Design System
 
 ## Workflow Context
 
@@ -9,30 +9,33 @@ You're in a FlowForge-managed worktree for this feature.
 - **Your focus:** Implement the feature. Human decides when to ship.
 
 ## Feature
-Establishes a cohesive Apple-native design language across the entire macOS app. Major sections (Idea Inbox, Ideas in Progress) get clear visual separation using native macOS materials and subtle borders. All UI elements are unified to follow consistent spacing, corner radii, and system color conventions.
+Transforms the macOS app's visual language to a Linear-inspired aesthetic - crisp, dark, information-dense, and professional. Major sections (Idea Inbox, Ideas in Progress) get clear visual separation with hairline borders on solid dark backgrounds. The entire app gets unified with this modern dev-tool aesthetic that complements terminal workflows like Warp.
 
 How it works:
-- **Section Containers**: Wrap each major section in a container with `.regularMaterial` or `.ultraThinMaterial` background, `1px` border using `.stroke(.separator)`, and `12pt` corner radius
-- **Design Tokens**: Standardize in `DesignTokens.swift`:
-- Corner radii: `small: 6`, `medium: 10`, `large: 12`
-- Spacing scale: `4, 8, 12, 16, 24, 32`
-- Colors: System only (`.primary`, `.secondary`, `.tertiary`, `.separator`, `.quaternary`)
-- **Component Unification**:
-- Buttons: Consistent use of `.buttonStyle(.bordered)` / `.borderedProminent`
-- Cards/Feature items: Uniform padding (`12-16pt`), subtle hover states via `.onHover`
-- Inputs: Native `TextField` styling with consistent heights
-- Remove all hardcoded hex colors in favor of semantic system colors
-- **Section Headers**: `.headline` or `.title3` typography, consistent vertical spacing above/below
-- **Light/Dark Mode**: Fully automatic - system materials and colors adapt without manual overrides
+- **Section Containers**: Solid dark backgrounds (`#1a1a1a` / `#242424`), hairline `1px` borders (`#333` or `rgba(255,255,255,0.08)`), tight `6-8px` corner radius
+- **Color Palette** (in `DesignTokens.swift`):
+- Backgrounds: `#0a0a0a` (base), `#141414` (elevated), `#1a1a1a` (card), `#242424` (hover)
+- Borders: `#2a2a2a` (subtle), `#333` (visible)
+- Text: `#fafafa` (primary), `#a0a0a0` (secondary), `#666` (tertiary)
+- Accent: Single brand color for interactive elements (buttons, selection states)
+- **Typography**: System font but tighter line-height, `13-14px` base size, medium weight for headers
+- **Spacing Scale**: Tighter than Apple native - `2, 4, 8, 12, 16, 24` (denser information display)
+- **Component Styling**:
+- Buttons: Solid fills with subtle borders, no gradients, crisp hover states
+- Cards/List items: `12px` padding, `6px` radius, hover → background shift to `#242424`
+- Inputs: Dark fill (`#141414`), subtle border, no heavy focus rings
+- Section headers: `12px` caps or `14px` medium weight, `#666` color, generous top margin
+- **Interactions**: Subtle transitions (`150ms ease`), background color shifts on hover, no bounce/spring physics
+- **Light Mode**: Optional - can be monochromatic light (`#fafafa` base) or dark-only for simplicity
 
 Files likely affected:
-- `FlowForgeApp/Design/DesignTokens.swift` - Spacing, radii, color semantic definitions
-- `FlowForgeApp/Views/ContentView.swift` - Main layout with section containers
-- `FlowForgeApp/Views/Kanban/` - Column and card styling
-- `FlowForgeApp/Design/Components/` - VibeInput, buttons, reusable components
-- `FlowForgeApp/Views/Sidebar/` - Sidebar styling alignment if needed
+- `FlowForgeApp/Design/DesignTokens.swift` - New color palette, spacing, radii
+- `FlowForgeApp/Views/ContentView.swift` - Section containers, base background
+- `FlowForgeApp/Views/Kanban/` - Column and card restyling
+- `FlowForgeApp/Design/Components/` - Button styles, VibeInput, hover states
+- `FlowForgeApp/App/FlowForgeApp.swift` - May need to disable system appearance overrides
 
-Estimated scope: Medium (2-3 hours)
+Estimated scope: Medium-Large (3-4 hours) - Custom color system requires more manual work than Apple-native, plus testing dark/light handling
 
 ## Research
 
