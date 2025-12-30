@@ -20,8 +20,10 @@ import re
 from dataclasses import dataclass, field
 from typing import AsyncGenerator, Optional
 
-# Prompt size limits to prevent hang with long conversations
-MAX_PROMPT_SIZE = 32000  # ~32KB limit for prompt
+# Soft limit for fallback conversation prompt builder.
+# 32KB balances context quality vs CLI response time.
+# Note: Claude Code CLI does NOT have documented autocompaction.
+MAX_PROMPT_SIZE = 32000  # ~32KB - balances context vs speed
 MIN_MESSAGES_TO_KEEP = 4  # Always keep at least 4 most recent messages
 
 
@@ -210,9 +212,21 @@ class BrainstormAgent:
             self.session.messages.append(BrainstormMessage(role="assistant", content=response_text))
 
     async def _start_new_session(self, user_message: str) -> AsyncGenerator[str, None]:
-        """Start a new Claude Code session with full system prompt."""
-        # Build initial prompt with system context
-        prompt = self._build_initial_prompt(user_message)
+        """Start a new Claude Code session with full system prompt.
+
+        Uses _build_initial_prompt for first message, or _build_conversation_prompt
+        if there's existing history (e.g., resuming old conversation without session_id).
+        """
+        # Check if there's existing conversation history (excluding the just-added message)
+        prior_messages = len(self.session.messages) - 1  # -1 for the new user message
+        if prior_messages > 0:
+            # Has history but no session_id - use conversation prompt with history
+            prompt = self._build_conversation_prompt(user_message)
+            print(f"[Brainstorm] Using conversation prompt with {prior_messages} prior messages, {len(prompt)} chars")
+        else:
+            # First message - use initial prompt
+            prompt = self._build_initial_prompt(user_message)
+            print(f"[Brainstorm] Using initial prompt, {len(prompt)} chars")
 
         cmd = [
             "claude",
@@ -222,22 +236,35 @@ class BrainstormAgent:
             "--tools", "",
         ]
 
+        print(f"[Brainstorm] Starting Claude CLI...")
+        import time
+        start_time = time.time()
+
         process = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
 
+        print(f"[Brainstorm] CLI process started, waiting for response...")
+
         full_response = []
+        first_chunk = True
         async for chunk in self._parse_stream_events(process, full_response):
+            if first_chunk:
+                print(f"[Brainstorm] First chunk received after {time.time() - start_time:.1f}s")
+                first_chunk = False
             yield chunk
 
-        # Check for errors
+        # Check for errors and always log completion
+        elapsed = time.time() - start_time
+        print(f"[Brainstorm] CLI completed after {elapsed:.1f}s, return code: {process.returncode}")
+
         if process.returncode != 0:
             stderr = await process.stderr.read()
             if stderr:
                 error_msg = stderr.decode("utf-8", errors="replace")
-                print(f"Claude CLI error: {error_msg}")
+                print(f"[Brainstorm] CLI error: {error_msg}")
 
         # Store the response
         response_text = "".join(full_response)

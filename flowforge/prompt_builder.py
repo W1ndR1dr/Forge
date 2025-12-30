@@ -163,17 +163,23 @@ class PromptBuilder:
             if session and session.synthesis:
                 research_synthesis = session.synthesis
 
-        # Generate expert preamble (or load if already generated)
+        # Generate expert preamble only if warranted (discretionary)
         expert_preamble = None
         if include_experts and not research_synthesis:
-            # Only auto-suggest experts if no deep research was done
-            experts = self.intelligence.suggest_experts(
+            # First check if this feature warrants expert consultation at all
+            # Most features don't - only invoke for design challenges, architecture, domain expertise
+            if self.intelligence.should_invoke_experts(
                 feature.title,
                 feature.description,
                 feature.tags,
-            )
-            if experts:
-                expert_preamble = self.intelligence.generate_expert_preamble(experts)
+            ):
+                experts = self.intelligence.suggest_experts(
+                    feature.title,
+                    feature.description,
+                    feature.tags,
+                )
+                if experts:
+                    expert_preamble = self.intelligence.generate_expert_preamble(experts)
 
         # Build dependency context
         dependency_context = self._build_dependency_context(feature)
@@ -233,26 +239,19 @@ class PromptBuilder:
             sections.append(context.research_synthesis)
             sections.append("")
 
-        # Expert perspectives (if research was done, these were synthesized)
+        # Expert perspectives (only included when dynamically generated - not boilerplate)
         if context.expert_preamble and not context.research_synthesis:
             sections.append(context.expert_preamble)
             sections.append("")
-        elif not context.research_synthesis:
-            # Add the expert consultation pattern for Claude to follow
-            sections.append("## Expert Consultation")
-            sections.append("")
-            sections.append("Consider perspectives from domain experts relevant to this feature.")
-            sections.append("Identify 2-3 real-world experts whose viewpoints would be valuable.")
-            sections.append("Synthesize their approaches in your implementation.")
-            sections.append("")
 
-        # Research guidance pattern
+        # Research guidance - prompt USER to run research if needed (not prescriptive about where)
         if not context.research_synthesis:
-            sections.append("## Research Guidance")
+            sections.append("## Research")
             sections.append("")
-            sections.append("If this feature involves novel patterns, complex architecture, or")
-            sections.append("unfamiliar APIs, conduct web research before implementing.")
-            sections.append("Cite official documentation where applicable.")
+            sections.append("If this feature involves novel patterns, complex architecture, or unfamiliar APIs:")
+            sections.append("- **Ask the human** to run deep research threads if you need authoritative context")
+            sections.append("- For clinical/medical evidence, specifically ask them to check OpenEvidence")
+            sections.append("- Cite official documentation where applicable")
             sections.append("")
 
         # Feature specification

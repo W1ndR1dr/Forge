@@ -270,6 +270,29 @@ class FlowForgeMCPServer:
                 },
             },
             {
+                "name": "flowforge_demote_feature",
+                "description": "Demote a feature back to idea/inbox status, cleaning up worktree if needed. Use when a feature needs to be put back on hold.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "project": {
+                            "type": "string",
+                            "description": "Project name",
+                        },
+                        "feature_id": {
+                            "type": "string",
+                            "description": "Feature ID to demote",
+                        },
+                        "to_status": {
+                            "type": "string",
+                            "enum": ["idea", "inbox"],
+                            "description": "Target status (default: idea)",
+                        },
+                    },
+                    "required": ["project", "feature_id"],
+                },
+            },
+            {
                 "name": "flowforge_merge_check",
                 "description": "Check if a feature is ready to merge (dry-run conflict detection)",
                 "inputSchema": {
@@ -379,6 +402,7 @@ class FlowForgeMCPServer:
             "flowforge_status": self._get_status,
             "flowforge_start_feature": self._start_feature,
             "flowforge_stop_feature": self._stop_feature,
+            "flowforge_demote_feature": self._demote_feature,
             "flowforge_merge_check": self._merge_check,
             "flowforge_merge": self._merge_feature,
             "flowforge_add_feature": self._add_feature,
@@ -635,6 +659,112 @@ class FlowForgeMCPServer:
                     f"Run merge-check to verify no conflicts",
                     f"Run merge to merge into {config.project.main_branch}",
                 ],
+            },
+        )
+
+    def _demote_feature(
+        self, project: str, feature_id: str, to_status: str = "idea"
+    ) -> MCPToolResult:
+        """
+        Demote a feature back to idea/inbox status, cleaning up worktree if needed.
+
+        This is useful when a feature needs to be put on hold or reconsidered.
+        Worktree cleanup requires Mac to be online.
+        """
+        try:
+            project_path, config, registry = self._get_project_context(project)
+        except ValueError as e:
+            return MCPToolResult(success=False, message=str(e))
+
+        feature = registry.get_feature(feature_id)
+        if not feature:
+            return MCPToolResult(
+                success=False,
+                message=f"Feature not found: {feature_id}",
+            )
+
+        # Validate target status
+        valid_targets = ["idea", "inbox"]
+        if to_status.lower() not in valid_targets:
+            return MCPToolResult(
+                success=False,
+                message=f"Invalid target status. Use: {', '.join(valid_targets)}",
+            )
+
+        target = FeatureStatus.IDEA if to_status.lower() == "idea" else FeatureStatus.INBOX
+
+        # Check if already at or below target status
+        status_order = [
+            FeatureStatus.INBOX,
+            FeatureStatus.IDEA,
+            FeatureStatus.IN_PROGRESS,
+            FeatureStatus.REVIEW,
+            FeatureStatus.COMPLETED,
+        ]
+        current_idx = status_order.index(feature.status) if feature.status in status_order else 2
+        target_idx = status_order.index(target)
+
+        if current_idx <= target_idx:
+            return MCPToolResult(
+                success=False,
+                message=f"Feature is already at {feature.status.value} status",
+            )
+
+        # Clean up worktree if exists (requires Mac to be online)
+        worktree_cleaned = False
+        branch_cleaned = False
+        if feature.worktree_path or feature.branch:
+            if self.remote:
+                try:
+                    # Remove worktree via SSH
+                    if feature.worktree_path:
+                        worktree_full_path = f"{project_path}/{feature.worktree_path}"
+                        self.remote.run_command(
+                            f"cd {project_path} && git worktree remove {worktree_full_path} --force"
+                        )
+                        worktree_cleaned = True
+                    # Remove branch via SSH (safe delete only)
+                    if feature.branch:
+                        try:
+                            self.remote.run_command(
+                                f"cd {project_path} && git branch -d {feature.branch}"
+                            )
+                            branch_cleaned = True
+                        except Exception:
+                            pass  # Branch might not exist or have unmerged changes
+                except Exception as e:
+                    # Worktree cleanup failed but we can still update status
+                    pass
+
+        # Update feature status and clear worktree fields
+        registry.update_feature(
+            feature_id,
+            status=target,
+            worktree_path=None,
+            branch=None,
+            started_at=None,
+        )
+        self._save_registry(project, registry)
+
+        cleanup_notes = []
+        if worktree_cleaned:
+            cleanup_notes.append("worktree removed")
+        if branch_cleaned:
+            cleanup_notes.append("branch deleted")
+
+        message = f"Feature '{feature.title}' demoted to {target.value}"
+        if cleanup_notes:
+            message += f" ({', '.join(cleanup_notes)})"
+
+        return MCPToolResult(
+            success=True,
+            message=message,
+            data={
+                "feature_id": feature_id,
+                "previous_status": feature.status.value,
+                "new_status": target.value,
+                "worktree_cleaned": worktree_cleaned,
+                "branch_cleaned": branch_cleaned,
             },
         )
 

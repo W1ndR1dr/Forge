@@ -92,6 +92,47 @@ class IntelligenceEngine:
         except Exception as e:
             return f"Error: {e}"
 
+    def should_invoke_experts(
+        self,
+        feature_title: str,
+        feature_description: str,
+        tags: list[str] = None,
+    ) -> bool:
+        """
+        Determine if a feature warrants expert consultation.
+
+        Most features don't need expert perspectives - only invoke for:
+        - Novel or complex design challenges
+        - UX/interaction design decisions
+        - Architecture choices with major trade-offs
+        - Domain-specific expertise (health, finance, accessibility)
+        """
+        tags_str = ", ".join(tags) if tags else "general"
+
+        prompt = f"""Decide if this feature warrants channeling expert perspectives.
+
+Feature: {feature_title}
+Description: {feature_description}
+Tags: {tags_str}
+
+Expert consultation is valuable for:
+- Novel UX patterns or interaction design (Jony Ive, Mike Matas territory)
+- Complex architecture with real trade-offs (Patrick Collison, Werner Vogels)
+- Domain expertise needs (health: cardiologists, finance: risk experts)
+- Design philosophy decisions (Dieter Rams "less but better")
+
+Expert consultation is NOT needed for:
+- Routine bug fixes
+- Simple CRUD features
+- Incremental improvements
+- Straightforward UI additions
+- Backend plumbing / glue code
+
+Respond with ONLY "yes" or "no".
+"""
+        response = self._call_claude(prompt, timeout=30).strip().lower()
+        return response.startswith("yes")
+
     def suggest_experts(
         self,
         feature_title: str,
@@ -104,6 +145,8 @@ class IntelligenceEngine:
 
         Uses Claude to identify 2-3 real-world experts whose perspectives
         would be valuable for implementing this specific feature.
+
+        Call should_invoke_experts() first to determine if this is warranted.
         """
         tags_str = ", ".join(tags) if tags else "general"
 
@@ -418,6 +461,9 @@ Format as a clear, actionable implementation guide."""
     ) -> str:
         """
         Generate a prompt preamble that invokes the perspectives of selected experts.
+
+        Uses strong invocation language to channel expert perspectives,
+        not just "consider" them passively.
         """
         if not experts:
             return ""
@@ -427,11 +473,11 @@ Format as a clear, actionable implementation guide."""
             for e in experts
         ])
 
-        return f"""## Expert Perspectives
+        return f"""## Channel These Experts
 
-Consider these expert viewpoints while implementing:
+As you implement this feature, embody the perspectives of:
 
 {expert_descriptions}
 
-Synthesize their perspectives where relevant, noting when different experts might approach things differently.
+Think as they would think. What would {experts[0].name} obsess over? What would they refuse to compromise on? Let their standards guide your decisions.
 """

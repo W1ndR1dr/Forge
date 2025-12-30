@@ -674,6 +674,21 @@ async def stop_feature(project: str, feature_id: str):
     return result.data
 
 
+@app.post("/api/{project}/features/{feature_id}/demote")
+async def demote_feature(
+    project: str, feature_id: str, to_status: str = "idea"
+):
+    """Demote feature back to idea/inbox status, cleaning up worktree if needed."""
+    result = mcp_server._demote_feature(project, feature_id, to_status)
+    if not result.success:
+        raise HTTPException(status_code=400, detail=result.message)
+
+    # Broadcast update
+    await ws_manager.broadcast_feature_update(project, feature_id, "demoted")
+
+    return result.data
+
+
 @app.post("/api/{project}/features/{feature_id}/smart-done")
 async def smart_done_feature(project: str, feature_id: str):
     """

@@ -817,6 +817,90 @@ def edit(
 
 
 @app.command()
+def demote(
+    feature_id: str = typer.Argument(..., help="Feature ID to demote"),
+    to_status: str = typer.Option("idea", "--to", "-t", help="Target status (idea or inbox)"),
+    force: bool = typer.Option(False, "--force", "-f", help="Skip confirmation prompt"),
+):
+    """Demote a feature back to idea/inbox status, cleaning up worktree if needed."""
+    project_root, config, registry = get_context()
+
+    feature = registry.get_feature(feature_id)
+    if not feature:
+        console.print(f"[red]Feature not found: {feature_id}[/red]")
+        raise typer.Exit(1)
+
+    # Validate target status
+    valid_targets = ["idea", "inbox"]
+    if to_status.lower() not in valid_targets:
+        console.print(f"[red]Invalid target status. Use: {', '.join(valid_targets)}[/red]")
+        raise typer.Exit(1)
+
+    target = FeatureStatus.IDEA if to_status.lower() == "idea" else FeatureStatus.INBOX
+
+    # Check if already at or below target status
+    status_order = [FeatureStatus.INBOX, FeatureStatus.IDEA, FeatureStatus.IN_PROGRESS, FeatureStatus.REVIEW, FeatureStatus.COMPLETED]
+    current_idx = status_order.index(feature.status) if feature.status in status_order else 2
+    target_idx = status_order.index(target)
+
+    if current_idx <= target_idx:
+        console.print(f"[yellow]Feature is already at {feature.status.value} status.[/yellow]")
+        raise typer.Exit(0)
+
+    # Warn if feature has worktree
+    has_worktree = feature.worktree_path and (project_root / feature.worktree_path).exists()
+    has_branch = feature.branch is not None
+
+    if has_worktree and not force:
+        console.print(f"\n[yellow]⚠️  Warning: This feature has an active worktree.[/yellow]")
+        console.print(f"   Path: {feature.worktree_path}")
+        console.print(f"   Any uncommitted changes will be lost!\n")
+        if not Confirm.ask("Continue with demotion?"):
+            console.print("[dim]Demotion cancelled.[/dim]")
+            raise typer.Exit(0)
+
+    # Clean up worktree if exists
+    if has_worktree:
+        worktree_path = project_root / feature.worktree_path
+        try:
+            subprocess.run(
+                ["git", "worktree", "remove", str(worktree_path), "--force"],
+                cwd=project_root,
+                capture_output=True,
+                check=True,
+            )
+            console.print(f"[dim]Removed worktree: {feature.worktree_path}[/dim]")
+        except subprocess.CalledProcessError as e:
+            console.print(f"[yellow]Warning: Could not remove worktree: {e.stderr.decode() if e.stderr else 'unknown error'}[/yellow]")
+
+    # Delete branch if exists (but only if not merged)
+    if has_branch:
+        try:
+            # Use -d (safe delete) not -D (force delete) to preserve merged work
+            subprocess.run(
+                ["git", "branch", "-d", feature.branch],
+                cwd=project_root,
+                capture_output=True,
+                check=True,
+            )
+            console.print(f"[dim]Deleted branch: {feature.branch}[/dim]")
+        except subprocess.CalledProcessError:
+            # Branch might not exist or might have unmerged changes - that's ok
+            pass
+
+    # Update feature status and clear worktree fields
+    registry.update_feature(
+        feature_id,
+        status=target,
+        worktree_path=None,
+        branch=None,
+        started_at=None,
+    )
+
+    console.print(f"\n✅ Demoted [green]{feature.title}[/green] to {target.value}")
+
+
+@app.command()
 def delete(
     feature_id: str = typer.Argument(..., help="Feature ID to delete"),
     force: bool = typer.Option(False, "--force", "-f", help="Force delete (even if in-progress or has children)"),

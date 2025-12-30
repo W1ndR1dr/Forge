@@ -64,6 +64,11 @@ struct BrainstormChatView: View {
 
             Divider()
 
+            // Long conversation warning (like Claude Code's compaction warning)
+            if client.messages.count >= 8 && client.currentSpec == nil && !client.isTyping {
+                longConversationBanner
+            }
+
             // Spec ready indicator
             if client.currentSpec != nil {
                 specReadyBanner
@@ -274,6 +279,57 @@ struct BrainstormChatView: View {
             .background(Accent.success.opacity(0.1))
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - Long Conversation Warning
+
+    private var longConversationBanner: some View {
+        VStack(spacing: Spacing.small) {
+            HStack(spacing: Spacing.small) {
+                Image(systemName: "clock.badge.exclamationmark")
+                    .foregroundColor(Accent.warning)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Long conversation (\(client.messages.count) messages)")
+                        .font(Typography.caption)
+                        .fontWeight(.medium)
+                    Text("Responses may be slower. Consider generating a spec.")
+                        .font(Typography.caption)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+            }
+
+            HStack(spacing: Spacing.medium) {
+                Button(action: generateSpecAndReset) {
+                    HStack(spacing: Spacing.micro) {
+                        Image(systemName: "sparkles")
+                        Text("Generate Spec")
+                    }
+                    .font(Typography.caption)
+                    .fontWeight(.medium)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Accent.primary)
+
+                Button(action: { /* Just dismiss by doing nothing - banner won't show during typing */ }) {
+                    Text("Continue Anyway")
+                        .font(Typography.caption)
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .padding(Spacing.standard)
+        .background(Accent.warning.opacity(0.1))
+    }
+
+    /// Generate spec and offer to reset conversation for fresh iteration
+    private func generateSpecAndReset() {
+        isGeneratingSpec = true
+        client.sendMessage("""
+            Based on our discussion, please generate a SPEC_READY summary.
+            Format it with the standard SPEC_READY format including:
+            FEATURE, WHAT IT DOES, HOW IT WORKS, FILES LIKELY AFFECTED, and ESTIMATED SCOPE.
+            """)
     }
 
     // MARK: - Input Area
