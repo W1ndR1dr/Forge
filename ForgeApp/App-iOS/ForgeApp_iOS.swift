@@ -180,6 +180,8 @@ struct iOSRoadmapView: View {
                         }
                     }
                 }
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
             }
         }
     }

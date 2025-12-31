@@ -77,7 +77,9 @@ struct BrainstormChatView: View {
             // Input area
             inputView
         }
+        #if os(macOS)
         .frame(minWidth: 600, idealWidth: 750, minHeight: 550, idealHeight: 700)
+        #endif
         .background(Linear.base)
         .environment(\.colorScheme, .dark)
         .onAppear {
@@ -575,7 +577,9 @@ struct SpecPreviewSheet: View {
             }
         }
         .padding(Spacing.large)
+        #if os(macOS)
         .frame(minWidth: 500, idealWidth: 600, minHeight: 450, idealHeight: 550)
+        #endif
         .background(Linear.base)
         .environment(\.colorScheme, .dark)
     }
