@@ -70,22 +70,6 @@ struct ProjectListView: View {
         .scrollContentBackground(.hidden)
         .background(Linear.background)
         .environment(\.defaultMinListRowHeight, 36)
-        .toolbar {
-            ToolbarItem(placement: .automatic) {
-                SortPicker(selection: $state.projectSortOrder)
-                    .help("Sort projects")
-            }
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    Task {
-                        await appState.loadProjects()
-                    }
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                }
-                .help("Refresh projects")
-            }
-        }
     }
 }
 

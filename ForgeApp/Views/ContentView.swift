@@ -2,18 +2,18 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(AppState.self) private var appState
-    @State private var showingAddFeature = false
-    @State private var newFeatureTitle = ""
 
     var body: some View {
         @Bindable var state = appState
 
         NavigationSplitView {
+            // Sidebar - recessed, darker
             ProjectListView()
                 .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 300)
         } detail: {
+            // Main workspace - elevated, foreground
             ZStack {
-                // Main content - Workspace view
+                // Elevated workspace container
                 VStack(spacing: 0) {
                     // Connection status bar at top
                     if !appState.isConnectedToServer {
@@ -53,6 +53,7 @@ struct ContentView: View {
                         }
                     }
                 }
+                .background(Linear.background)
 
                 // Toast notifications overlay (error/success only)
                 VStack {
@@ -84,6 +85,22 @@ struct ContentView: View {
             }
             .background(Linear.background)
         }
+        .toolbar {
+            // Forge branding - leftmost
+            ToolbarItem(placement: .navigation) {
+                HStack(spacing: Spacing.medium) {
+                    Image(nsImage: NSApp.applicationIconImage)
+                        .resizable()
+                        .interpolation(.high)
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 28, height: 28)
+                    Text("Forge")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(Linear.textPrimary)
+                }
+                .padding(.horizontal, -4) // Tighten around branding
+            }
+        }
         .preferredColorScheme(.dark)
         .sheet(isPresented: Binding(
             get: { appState.showingProposalReview },
@@ -106,73 +123,6 @@ struct ContentView: View {
             if let project = appState.projectToInitialize {
                 ProjectSetupSheet(project: project)
             }
-        }
-        .toolbar {
-            // Left side: Project name
-            ToolbarItemGroup(placement: .navigation) {
-                if let project = appState.selectedProject {
-                    HStack(spacing: Spacing.small) {
-                        Image(systemName: "folder.fill")
-                            .foregroundColor(Linear.textSecondary)
-                            .font(.system(size: 14))
-                        Text(project.name)
-                            .font(Typography.bodyMedium)
-                            .foregroundColor(Linear.textPrimary)
-                    }
-                }
-            }
-
-            // Right side: Streak, Quick Add, Search, Refresh
-            ToolbarItemGroup(placement: .primaryAction) {
-                // Shipping streak badge (compact)
-                StreakBadge(
-                    currentStreak: appState.shippingStats.currentStreak,
-                    longestStreak: appState.shippingStats.longestStreak,
-                    totalShipped: appState.shippingStats.totalShipped,
-                    showDetails: false,
-                    compact: true
-                )
-
-                // Quick add button
-                Button {
-                    showingAddFeature = true
-                } label: {
-                    Image(systemName: "plus")
-                }
-                .help("Add Feature (Cmd+N)")
-                .disabled(appState.selectedProject == nil)
-
-                // Search / Command palette placeholder
-                Button {
-                    // TODO: Trigger command palette
-                } label: {
-                    Image(systemName: "magnifyingglass")
-                }
-                .help("Search (Cmd+K)")
-
-                // Refresh button
-                Button {
-                    refreshFeatures()
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                }
-                .help("Refresh (Cmd+R)")
-            }
-        }
-        .sheet(isPresented: $showingAddFeature) {
-            QuickAddFeatureSheet(
-                isPresented: $showingAddFeature,
-                featureTitle: $newFeatureTitle
-            )
-            .environment(appState)
-        }
-    }
-
-    // MARK: - Keyboard Shortcut Actions
-
-    func refreshFeatures() {
-        Task {
-            await appState.loadFeatures()
         }
     }
 }

@@ -39,7 +39,8 @@ struct ProjectSetupSheet: View {
             // Footer with actions
             footer
         }
-        .frame(width: 480, height: useQuickMode ? 420 : 560)
+        .frame(minHeight: useQuickMode ? 420 : 500, maxHeight: 800)
+        .frame(width: 520)
         .background(Linear.base)
         .environment(\.colorScheme, .dark)
     }
@@ -169,7 +170,7 @@ struct ProjectSetupSheet: View {
                     .foregroundColor(Linear.textSecondary)
                 TextField("What does this project do?", text: $projectDescription, axis: .vertical)
                     .textFieldStyle(.linear)
-                    .lineLimit(2...4)
+                    .lineLimit(3...)
             }
 
             VStack(alignment: .leading, spacing: Spacing.small) {
@@ -179,7 +180,7 @@ struct ProjectSetupSheet: View {
                     .foregroundColor(Linear.textSecondary)
                 TextField("Where is this project headed?", text: $projectVision, axis: .vertical)
                     .textFieldStyle(.linear)
-                    .lineLimit(2...4)
+                    .lineLimit(3...)
             }
         }
     }

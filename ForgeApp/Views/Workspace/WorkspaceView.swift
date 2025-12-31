@@ -284,14 +284,16 @@ struct WorkspaceView: View {
     // MARK: - Shipped Section
 
     private var shippedSection: some View {
-        VStack(alignment: .leading, spacing: Spacing.medium) {
+        VStack(alignment: .leading, spacing: Spacing.small) {
             HStack {
                 Text("SHIPPED THIS WEEK")
-                    .sectionHeaderStyle()
+                    .font(Typography.caption)
+                    .foregroundColor(Linear.textTertiary)
 
                 if !shippedThisWeek.isEmpty {
                     Text("\(shippedThisWeek.count)")
-                        .badgeStyle(color: Accent.success)
+                        .font(Typography.caption)
+                        .foregroundColor(Accent.success)
                 }
 
                 Spacer()
@@ -299,13 +301,11 @@ struct WorkspaceView: View {
 
             if shippedThisWeek.isEmpty {
                 EmptyShippedView()
-                    .frame(height: 120)
+                    .frame(height: 80)
             } else {
-                // Small multiples (Tufte)
+                // Adaptive columns - 1 to 3 based on width
                 LazyVGrid(columns: [
-                    GridItem(.flexible()),
-                    GridItem(.flexible()),
-                    GridItem(.flexible())
+                    GridItem(.adaptive(minimum: 180, maximum: 280))
                 ], spacing: Spacing.small) {
                     ForEach(shippedThisWeek) { feature in
                         ShippedCard(feature: feature)
@@ -1008,22 +1008,77 @@ struct ShippedCard: View {
     let feature: Feature
 
     @State private var isVisible = false
+    @State private var isHovered = false
+    @State private var showPopover = false
+
+    private var completedDateString: String? {
+        guard let date = feature.completedAt else { return nil }
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
 
     var body: some View {
         HStack(spacing: Spacing.small) {
             Image(systemName: "checkmark.circle.fill")
                 .foregroundColor(Accent.success)
-                .font(.system(size: 14))
+                .font(.system(size: 12))
 
             Text(feature.title)
-                .font(Typography.caption)
+                .font(.system(size: 11))
                 .lineLimit(1)
 
             Spacer()
+
+            if isHovered, let dateStr = completedDateString {
+                Text(dateStr)
+                    .font(.system(size: 10))
+                    .foregroundColor(Linear.textTertiary)
+            }
         }
-        .padding(Spacing.small)
-        .background(Accent.success.opacity(0.1))
+        .padding(.horizontal, Spacing.small)
+        .padding(.vertical, Spacing.micro)
+        .background(isHovered ? Accent.success.opacity(0.15) : Accent.success.opacity(0.08))
         .cornerRadius(CornerRadius.small)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            showPopover.toggle()
+        }
+        .onHover { isHovered = $0 }
+        .animation(LinearEasing.fast, value: isHovered)
+        .popover(isPresented: $showPopover, arrowEdge: .trailing) {
+            VStack(alignment: .leading, spacing: Spacing.small) {
+                Text(feature.title)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(Linear.textPrimary)
+
+                if let desc = feature.description, !desc.isEmpty {
+                    Text(desc)
+                        .font(.system(size: 11))
+                        .foregroundColor(Linear.textSecondary)
+                        .lineLimit(3)
+                }
+
+                if let date = feature.completedAt {
+                    Text("Shipped \(date.formatted(.relative(presentation: .named)))")
+                        .font(.system(size: 10))
+                        .foregroundColor(Linear.textTertiary)
+                }
+
+                if let branch = feature.branch {
+                    HStack(spacing: 2) {
+                        Image(systemName: "arrow.triangle.branch")
+                            .font(.system(size: 9))
+                        Text(branch)
+                            .font(.system(size: 10, design: .monospaced))
+                    }
+                    .foregroundColor(Linear.textTertiary)
+                }
+            }
+            .padding(Spacing.medium)
+            .frame(maxWidth: 280)
+            .background(Linear.surface)
+        }
         .bounceIn(isVisible: isVisible)
         .onAppear {
             isVisible = true

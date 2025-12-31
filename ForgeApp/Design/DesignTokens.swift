@@ -195,23 +195,23 @@ enum Typography {
 // Systematic spacing — Rams' "less, but better"
 
 enum Spacing {
-    /// Micro spacing — 4pt (badge internals, tight elements)
-    static let micro: CGFloat = 4
+    /// Micro spacing — 2pt (badge internals, tight elements)
+    static let micro: CGFloat = 2
 
-    /// Small spacing — 8pt (tag spacing, icon gaps)
-    static let small: CGFloat = 8
+    /// Small spacing — 4pt (tag spacing, icon gaps)
+    static let small: CGFloat = 4
 
-    /// Medium spacing — 12pt (card internal spacing)
-    static let medium: CGFloat = 12
+    /// Medium spacing — 6pt (card internal spacing)
+    static let medium: CGFloat = 6
 
-    /// Standard spacing — 16pt (section gaps, card padding)
-    static let standard: CGFloat = 16
+    /// Standard spacing — 10pt (section gaps, card padding)
+    static let standard: CGFloat = 10
 
-    /// Large spacing — 24pt (major section gaps)
-    static let large: CGFloat = 24
+    /// Large spacing — 16pt (internal section padding)
+    static let large: CGFloat = 16
 
-    /// XL spacing — 32pt (view-level separation)
-    static let xl: CGFloat = 32
+    /// XL spacing — 20pt (between major sections - tighter)
+    static let xl: CGFloat = 20
 }
 
 // MARK: - Corner Radius
@@ -482,12 +482,12 @@ extension View {
     /// Apply Linear-style section container
     func linearSection() -> some View {
         self
-            .padding(Spacing.standard)
+            .padding(Spacing.large)
             .background(
-                RoundedRectangle(cornerRadius: CornerRadius.xl, style: .continuous)
+                RoundedRectangle(cornerRadius: CornerRadius.large, style: .continuous)
                     .fill(Linear.surface)
                     .overlay(
-                        RoundedRectangle(cornerRadius: CornerRadius.xl, style: .continuous)
+                        RoundedRectangle(cornerRadius: CornerRadius.large, style: .continuous)
                             .strokeBorder(Linear.border, lineWidth: 1)
                     )
             )
