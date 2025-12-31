@@ -12,20 +12,20 @@
                 <h2>What's New in 1.9.0</h2>
                 <ul>
 ---NOTES---
-                    <li>✨ Complete rebrand from FlowForge to Forge - cleaner, simpler name</li>
-                    <li>Refined UI with tighter corner radii matching Warp terminal aesthetic</li>
-                    <li>Fixed remaining registry path references for smoother operation</li>
----PLATFORMS---
+                    <li>✨ Completed rebrand from FlowForge to Forge</li>
+                    <li>Fixed registry paths for cleaner project management</li>
+                    <li>Updated app icon with refined dark grey background</li>
+                    <li>Fine-tuned corner radius to match WhatsApp aesthetic</li>
                 </ul>
             ]]></description>
-            <pubDate>Tue, 30 Dec 2025 20:43:55 -0800</pubDate>
-            <sparkle:version>1</sparkle:version>
+            <pubDate>Tue, 30 Dec 2025 21:04:05 -0800</pubDate>
+            <sparkle:version>2</sparkle:version>
             <sparkle:shortVersionString>1.9.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <enclosure
                 url="https://github.com/W1ndR1dr/Forge/releases/download/v1.9.0/Forge-1.9.0.zip"
-                sparkle:edSignature="sparkle:edSignature="zwtc40jD75ofvdyS1oLDuT/0sys9zN1ltOcz3q0ESBvc5YyQMATEw1V0XnPLFys2kyYOlMfdjtO3OFRTTGbqBg==" length="2384044""
-                length="2384044"
+                sparkle:edSignature="sparkle:edSignature="Myf59of/veuZ83JhXwLHJWbyWkb9PRLWBJHzbzwFadBj4t9uFdzhivsUJpEtWF4i9fUqtCw3BYc+99CGpXwjCw==" length="2384043""
+                length="2384043"
                 type="application/octet-stream"/>
         </item>
 
