@@ -7,24 +7,25 @@
         <language>en</language>
 
         <item>
-            <title>Forge 1.8.0</title>
+            <title>Forge 1.9.0</title>
             <description><![CDATA[
-                <h2>What's New in 1.8.0</h2>
+                <h2>What's New in 1.9.0</h2>
                 <ul>
-                    <li>Refined prompts for better AI-assisted development flow</li>
-                    <li>Softer, more subtle UI colors for improved focus</li>
-                    <li>Dark mode icon and better project visibility settings</li>
-                    <li>Cleaner interface with reduced visual noise</li>
+---NOTES---
+                    <li>✨ Complete rebrand from FlowForge to Forge - cleaner, simpler name</li>
+                    <li>Refined UI with tighter corner radii matching Warp terminal aesthetic</li>
+                    <li>Fixed remaining registry path references for smoother operation</li>
+---PLATFORMS---
                 </ul>
             ]]></description>
-            <pubDate>Tue, 30 Dec 2025 19:51:30 -0800</pubDate>
+            <pubDate>Tue, 30 Dec 2025 20:43:55 -0800</pubDate>
             <sparkle:version>1</sparkle:version>
-            <sparkle:shortVersionString>1.8.0</sparkle:shortVersionString>
+            <sparkle:shortVersionString>1.9.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <enclosure
-                url="https://github.com/W1ndR1dr/Forge/releases/download/v1.8.0/Forge-1.8.0.zip"
-                sparkle:edSignature="knB8Hyc4zNqYhLNRPAsi+WlfTtgIVtM0SrjWlKSy0W/EwoSg1fMM+3eFZVkebr3eZmEd+b99EGYjsCuGsfddBQ=="
-                length="2388637"
+                url="https://github.com/W1ndR1dr/Forge/releases/download/v1.9.0/Forge-1.9.0.zip"
+                sparkle:edSignature="sparkle:edSignature="zwtc40jD75ofvdyS1oLDuT/0sys9zN1ltOcz3q0ESBvc5YyQMATEw1V0XnPLFys2kyYOlMfdjtO3OFRTTGbqBg==" length="2384044""
+                length="2384044"
                 type="application/octet-stream"/>
         </item>
 
