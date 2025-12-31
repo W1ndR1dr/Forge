@@ -106,13 +106,6 @@ struct WorkspaceView: View {
                 }
 
                 Spacer()
-
-                // Streak badge
-                StreakBadge(
-                    currentStreak: appState.shippingStats.currentStreak,
-                    longestStreak: appState.shippingStats.longestStreak,
-                    totalShipped: appState.shippingStats.totalShipped
-                )
             }
 
             // The iconic vibe input - submit adds directly to queue

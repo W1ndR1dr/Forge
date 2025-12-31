@@ -18,17 +18,17 @@ enum StatusColor {
     static let idea = Color("StatusIdea", bundle: nil)
     static let ideaFallback = Color(light: .init(white: 0.45), dark: .init(white: 0.55))
 
-    /// In Progress: Active work, attention here — confident blue
+    /// In Progress: Active work, attention here — muted blue
     static let inProgress = Color("StatusInProgress", bundle: nil)
-    static let inProgressFallback = Color(light: .blue, dark: .init(red: 0.4, green: 0.6, blue: 1.0))
+    static let inProgressFallback = Color(light: .blue.opacity(0.8), dark: .init(red: 0.45, green: 0.58, blue: 0.85))
 
     /// Review: Almost done, needs final check — warm amber
     static let review = Color("StatusReview", bundle: nil)
     static let reviewFallback = Color(light: .orange, dark: .init(red: 1.0, green: 0.7, blue: 0.3))
 
-    /// Completed: Shipped, celebration — fresh emerald
+    /// Completed: Shipped, celebration — muted sage green
     static let completed = Color("StatusCompleted", bundle: nil)
-    static let completedFallback = Color(light: .init(red: 0.2, green: 0.7, blue: 0.4), dark: .init(red: 0.3, green: 0.8, blue: 0.5))
+    static let completedFallback = Color(light: .init(red: 0.3, green: 0.65, blue: 0.45), dark: .init(red: 0.35, green: 0.68, blue: 0.5))
 
     /// Blocked: Problem, needs intervention — alert rose
     static let blocked = Color("StatusBlocked", bundle: nil)
@@ -96,11 +96,11 @@ enum Surface {
 
 /// Accent colors for actions and emphasis
 enum Accent {
-    /// Primary action color — the SHIP button
-    static let primary = Color.blue
+    /// Primary action color — muted blue
+    static let primary = Color(red: 0.4, green: 0.55, blue: 0.82)
 
-    /// Success/celebration — shipping moments
-    static let success = Color.green
+    /// Success/celebration — muted sage
+    static let success = Color(red: 0.35, green: 0.65, blue: 0.5)
 
     /// Warning — approaching limits, streak at risk
     static let warning = Color.orange
@@ -361,30 +361,30 @@ enum Linear {
     /// Muted text - disabled, placeholders (#52525B)
     static let textMuted = Color(hex: "52525B")
 
-    // MARK: - Accent Colors (Linear's signature indigo)
+    // MARK: - Accent Colors (softened indigo)
 
-    /// Primary accent - Linear's signature indigo (#5E6AD2)
-    static let accent = Color(hex: "5E6AD2")
+    /// Primary accent - softened indigo (#6B75C4)
+    static let accent = Color(hex: "6B75C4").opacity(0.9)
 
-    /// Accent hover state (#6872D9)
-    static let accentHover = Color(hex: "6872D9")
+    /// Accent hover state (#7A83CE)
+    static let accentHover = Color(hex: "7A83CE").opacity(0.9)
 
-    /// Accent pressed state (#4551B5)
-    static let accentPressed = Color(hex: "4551B5")
+    /// Accent pressed state (#5560A8)
+    static let accentPressed = Color(hex: "5560A8").opacity(0.9)
 
     // MARK: - Semantic Colors (muted, desaturated for dark theme)
 
-    /// Success - muted green (#4DA673) at 85% opacity for softer appearance
-    static let success = Color(hex: "4DA673").opacity(0.85)
+    /// Success - desaturated sage (#5A9E7A) at 80% opacity
+    static let success = Color(hex: "5A9E7A").opacity(0.8)
 
-    /// Warning - warm amber (#EAA94B) at 85% opacity
-    static let warning = Color(hex: "EAA94B").opacity(0.85)
+    /// Warning - warm amber (#D9A054) at 80% opacity
+    static let warning = Color(hex: "D9A054").opacity(0.8)
 
-    /// Error - soft red (#D25E65) at 85% opacity
-    static let error = Color(hex: "D25E65").opacity(0.85)
+    /// Error - soft rose (#C46B70) at 80% opacity
+    static let error = Color(hex: "C46B70").opacity(0.8)
 
-    /// Info - soft blue (same as accent)
-    static let info = Color(hex: "5E6AD2").opacity(0.85)
+    /// Info - soft indigo (matches accent)
+    static let info = Color(hex: "6B75C4").opacity(0.8)
 
     // MARK: - Legacy Aliases (for migration)
     // TODO: Remove these after updating all views
