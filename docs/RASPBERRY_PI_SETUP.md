@@ -1,13 +1,13 @@
-# FlowForge Raspberry Pi Setup Guide
+# Forge Raspberry Pi Setup Guide
 
-This guide walks you through setting up FlowForge on a Raspberry Pi from scratch. No prior Pi experience required!
+This guide walks you through setting up Forge on a Raspberry Pi from scratch. No prior Pi experience required!
 
 ## What You'll Get
 
 After this setup:
-- FlowForge server running 24/7 on your Pi
+- Forge server running 24/7 on your Pi
 - Access from anywhere via Tailscale (secure VPN)
-- Claude Code on iPhone can call FlowForge tools natively
+- Claude Code on iPhone can call Forge tools natively
 - Web UI accessible from any browser
 - Worktrees created on your Mac remotely
 
@@ -17,7 +17,7 @@ After this setup:
 │                                                               │
 │  ┌─────────────┐     Tailscale      ┌─────────────┐          │
 │  │ Raspberry Pi│◄──────────────────►│    Mac      │          │
-│  │ FlowForge   │                    │ (worktrees) │          │
+│  │ Forge       │                    │ (worktrees) │          │
 │  │ Server:8081 │                    │             │          │
 │  └─────────────┘                    └─────────────┘          │
 │         ▲                                                     │
@@ -42,7 +42,7 @@ After this setup:
 4. Select **Raspberry Pi OS (64-bit)** - the full desktop version is fine
 5. Click "Choose Storage" and select your SD card
 6. **Important**: Click the gear icon (⚙️) to configure:
-   - Set hostname: `flowforge-pi` (or whatever you want)
+   - Set hostname: `forge-pi` (or whatever you want)
    - Enable SSH: Yes, use password authentication
    - Set username: `pi` (or your preference)
    - Set password: (something secure!)
@@ -57,14 +57,14 @@ After this setup:
 3. Wait 2-3 minutes for first boot
 4. Find your Pi's IP address:
    - Check your router's admin page, or
-   - On Mac: `ping flowforge-pi.local` (if you set hostname)
+   - On Mac: `ping forge-pi.local` (if you set hostname)
 
 ### 1.3 SSH Into Your Pi
 
 From your Mac Terminal:
 
 ```bash
-ssh pi@flowforge-pi.local
+ssh pi@forge-pi.local
 # Or use the IP address: ssh pi@192.168.x.x
 ```
 
@@ -105,7 +105,7 @@ This will print a URL. Open it in a browser to authenticate with your Tailscale 
 tailscale status
 ```
 
-Note your Pi's Tailscale hostname (e.g., `flowforge-pi`). You'll access it as `flowforge-pi.tailnet` or similar.
+Note your Pi's Tailscale hostname (e.g., `forge-pi`). You'll access it as `forge-pi.tailnet` or similar.
 
 ### 2.4 Install Tailscale on Mac and iPhone
 
@@ -116,7 +116,7 @@ Sign in to the same Tailscale account on all devices.
 
 ---
 
-## Part 3: Install FlowForge
+## Part 3: Install Forge
 
 ### 3.1 Install Python 3.11+
 
@@ -132,29 +132,29 @@ If not:
 sudo apt install python3.11 python3.11-venv python3-pip -y
 ```
 
-### 3.2 Clone FlowForge
+### 3.2 Clone Forge
 
 ```bash
 cd ~
-git clone https://github.com/YOUR_USERNAME/FlowForge.git flowforge
-cd flowforge
+git clone https://github.com/W1ndR1dr/Forge.git forge
+cd forge
 ```
 
 Or if you're copying from your Mac:
 ```bash
 # On your Mac:
-scp -r ~/Projects/Active/FlowForge pi@flowforge-pi.local:~/flowforge
+scp -r ~/Projects/Active/Forge pi@forge-pi.local:~/forge
 ```
 
 ### 3.3 Create Virtual Environment
 
 ```bash
-cd ~/flowforge
+cd ~/forge
 python3 -m venv venv
 source venv/bin/activate
 ```
 
-### 3.4 Install FlowForge with Server Dependencies
+### 3.4 Install Forge with Server Dependencies
 
 ```bash
 pip install -e ".[server]"
@@ -164,7 +164,7 @@ pip install -e ".[server]"
 
 ```bash
 forge --version
-# Should show: FlowForge v0.1.0
+# Should show: Forge v0.1.0
 ```
 
 ---
@@ -176,7 +176,7 @@ The Pi needs to create git worktrees on your Mac. We'll set up passwordless SSH.
 ### 4.1 Generate SSH Key on Pi
 
 ```bash
-ssh-keygen -t ed25519 -C "flowforge-pi"
+ssh-keygen -t ed25519 -C "forge-pi"
 # Press Enter for all prompts (no passphrase needed)
 ```
 
@@ -206,31 +206,31 @@ ssh your-username@brians-macbook-pro "echo 'Connection works!'"
 
 ## Part 5: Create Systemd Service
 
-This makes FlowForge start automatically when the Pi boots.
+This makes Forge start automatically when the Pi boots.
 
 ### 5.1 Create Service File
 
 ```bash
-sudo nano /etc/systemd/system/flowforge.service
+sudo nano /etc/systemd/system/forge.service
 ```
 
 Paste this (edit the paths and usernames):
 
 ```ini
 [Unit]
-Description=FlowForge Development Orchestrator
+Description=Forge Development Orchestrator
 After=network.target tailscaled.service
 
 [Service]
 Type=simple
 User=pi
-WorkingDirectory=/home/pi/flowforge
-Environment="PATH=/home/pi/flowforge/venv/bin:/usr/local/bin:/usr/bin"
-Environment="FLOWFORGE_PROJECTS_PATH=/Users/YOUR_MAC_USERNAME/Projects/Active"
-Environment="FLOWFORGE_MAC_HOST=YOUR_MAC_TAILSCALE_HOSTNAME"
-Environment="FLOWFORGE_MAC_USER=YOUR_MAC_USERNAME"
-Environment="FLOWFORGE_PORT=8081"
-ExecStart=/home/pi/flowforge/venv/bin/python -m flowforge.server
+WorkingDirectory=/home/pi/forge
+Environment="PATH=/home/pi/forge/venv/bin:/usr/local/bin:/usr/bin"
+Environment="FORGE_PROJECTS_PATH=/Users/YOUR_MAC_USERNAME/Projects/Active"
+Environment="FORGE_MAC_HOST=YOUR_MAC_TAILSCALE_HOSTNAME"
+Environment="FORGE_MAC_USER=YOUR_MAC_USERNAME"
+Environment="FORGE_PORT=8081"
+ExecStart=/home/pi/forge/venv/bin/python -m forge.server
 Restart=always
 RestartSec=10
 
@@ -248,14 +248,14 @@ Save with `Ctrl+O`, then `Enter`, then `Ctrl+X` to exit.
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable flowforge
-sudo systemctl start flowforge
+sudo systemctl enable forge
+sudo systemctl start forge
 ```
 
 ### 5.3 Check Status
 
 ```bash
-sudo systemctl status flowforge
+sudo systemctl status forge
 ```
 
 Should show "active (running)".
@@ -263,7 +263,7 @@ Should show "active (running)".
 ### 5.4 View Logs
 
 ```bash
-sudo journalctl -u flowforge -f
+sudo journalctl -u forge -f
 # Press Ctrl+C to stop following
 ```
 
@@ -276,25 +276,25 @@ sudo journalctl -u flowforge -f
 From any device on your Tailscale network, open a browser to:
 
 ```
-http://flowforge-pi:8081/
+http://forge-pi:8081/
 ```
 
-You should see the FlowForge web UI!
+You should see the Forge web UI!
 
 ### 6.2 Test API
 
 ```bash
-curl http://flowforge-pi:8081/health
+curl http://forge-pi:8081/health
 # Should return: {"status":"healthy",...}
 
-curl http://flowforge-pi:8081/api/projects
-# Should list your FlowForge-initialized projects
+curl http://forge-pi:8081/api/projects
+# Should list your Forge-initialized projects
 ```
 
 ### 6.3 Test MCP Tools
 
 ```bash
-curl http://flowforge-pi:8081/mcp/tools
+curl http://forge-pi:8081/mcp/tools
 # Should list all available tools
 ```
 
@@ -307,20 +307,20 @@ curl http://flowforge-pi:8081/mcp/tools
 1. Open Claude app on iPhone
 2. Go to Settings → Claude Code → MCP Servers
 
-### 7.2 Add FlowForge Server
+### 7.2 Add Forge Server
 
 Add a new Remote MCP Server:
-- **Name**: FlowForge
-- **URL**: `http://flowforge-pi:8081`
+- **Name**: Forge
+- **URL**: `http://forge-pi:8081`
   (Use your Pi's Tailscale hostname)
 
 ### 7.3 Test It!
 
 In Claude Code on iPhone, try:
 
-> "List all projects in FlowForge"
+> "List all projects in Forge"
 
-Claude should call the `flowforge_list_projects` tool and show your projects!
+Claude should call the `forge_list_projects` tool and show your projects!
 
 ---
 
@@ -336,16 +336,16 @@ tailscale status
 sudo systemctl restart tailscaled
 ```
 
-### FlowForge Server Not Starting
+### Forge Server Not Starting
 
 ```bash
 # Check logs:
-sudo journalctl -u flowforge -n 50
+sudo journalctl -u forge -n 50
 
 # Try running manually to see errors:
-cd ~/flowforge
+cd ~/forge
 source venv/bin/activate
-FLOWFORGE_PROJECTS_PATH=/Users/YOUR_USERNAME/Projects/Active forge-server
+FORGE_PROJECTS_PATH=/Users/YOUR_USERNAME/Projects/Active forge-server
 ```
 
 ### SSH to Mac Failing
@@ -361,7 +361,7 @@ cat ~/.ssh/id_ed25519.pub
 
 ### Projects Not Found
 
-Make sure the `FLOWFORGE_PROJECTS_PATH` in the systemd service points to the correct directory on your Mac, and that those projects have been initialized with `forge init`.
+Make sure the `FORGE_PROJECTS_PATH` in the systemd service points to the correct directory on your Mac, and that those projects have been initialized with `forge init`.
 
 ---
 
@@ -369,12 +369,12 @@ Make sure the `FLOWFORGE_PROJECTS_PATH` in the systemd service points to the cor
 
 | What | Command/URL |
 |------|-------------|
-| SSH to Pi | `ssh pi@flowforge-pi` |
-| Pi Web UI | `http://flowforge-pi:8081/` |
-| Check server status | `sudo systemctl status flowforge` |
-| View server logs | `sudo journalctl -u flowforge -f` |
-| Restart server | `sudo systemctl restart flowforge` |
-| Stop server | `sudo systemctl stop flowforge` |
+| SSH to Pi | `ssh pi@forge-pi` |
+| Pi Web UI | `http://forge-pi:8081/` |
+| Check server status | `sudo systemctl status forge` |
+| View server logs | `sudo journalctl -u forge -f` |
+| Restart server | `sudo systemctl restart forge` |
+| Stop server | `sudo systemctl stop forge` |
 
 ---
 
@@ -387,6 +387,6 @@ Once everything is running:
    - "Start the login-feature on MyApp"
    - "What features are in progress on AirFit?"
    - "Check if any features are ready to merge"
-3. **From Browser**: Use the web UI at `http://flowforge-pi:8081/`
+3. **From Browser**: Use the web UI at `http://forge-pi:8081/`
 
-Happy building! 🔨
+Happy building!

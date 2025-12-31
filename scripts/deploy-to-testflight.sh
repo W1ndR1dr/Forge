@@ -1,5 +1,5 @@
 #!/bin/bash
-# FlowForge iOS TestFlight Deployment Script
+# Forge iOS TestFlight Deployment Script
 # Automates: Archive → Export → Upload to TestFlight → Auto-Generate Release Notes
 #
 # CREDENTIALS SETUP (one-time):
@@ -27,18 +27,18 @@ set -e
 # ============================================================================
 
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$PROJECT_DIR/FlowForgeApp"
+cd "$PROJECT_DIR/ForgeApp"
 
-SCHEME="FlowForgeApp-iOS"
-PROJECT="FlowForgeApp.xcodeproj"
-BUNDLE_ID="com.flowforge.app.ios"
+SCHEME="ForgeApp-iOS"
+PROJECT="ForgeApp.xcodeproj"
+BUNDLE_ID="com.forge.app.ios"
 TEAM_ID="2H43Q8Y3CR"
 APP_APPLE_ID=""  # Set this after first upload shows the ID
 
-BUILD_DIR="$PROJECT_DIR/FlowForgeApp/build/testflight"
-ARCHIVE_PATH="$BUILD_DIR/FlowForgeApp-iOS.xcarchive"
+BUILD_DIR="$PROJECT_DIR/ForgeApp/build/testflight"
+ARCHIVE_PATH="$BUILD_DIR/ForgeApp-iOS.xcarchive"
 EXPORT_PATH="$BUILD_DIR/export"
-EXPORT_OPTIONS_PATH="$PROJECT_DIR/FlowForgeApp/ExportOptions.plist"
+EXPORT_OPTIONS_PATH="$PROJECT_DIR/ForgeApp/ExportOptions.plist"
 
 # ============================================================================
 # Helper Functions
@@ -211,7 +211,7 @@ generate_changelog() {
         return
     fi
 
-    local prompt="You are a release engineer for FlowForge, a vibecoder's development workflow tool.
+    local prompt="You are a release engineer for Forge, a vibecoder's development workflow tool.
 
 TASK: Analyze these commits and provide:
 1. iOS TestFlight release notes (2-4 friendly bullet points)
@@ -222,7 +222,7 @@ COMMITS:
 $commits
 
 CHANGED FILES (for platform analysis):
-$(git diff --name-only HEAD~10..HEAD -- FlowForgeApp/ 2>/dev/null | head -30)
+$(git diff --name-only HEAD~10..HEAD -- ForgeApp/ 2>/dev/null | head -30)
 
 RESPOND IN THIS EXACT FORMAT:
 ---NOTES---
@@ -300,8 +300,8 @@ done
 # Validate Prerequisites
 # ============================================================================
 
-echo "🚀 FlowForge iOS TestFlight Deployment"
-echo "======================================="
+echo "🚀 Forge iOS TestFlight Deployment"
+echo "==================================="
 echo ""
 
 # Auto-source credentials
@@ -376,8 +376,8 @@ echo "✅ Deploying commit $CURRENT_COMMIT"
 # Version/Build Management
 # ============================================================================
 
-cd "$PROJECT_DIR/FlowForgeApp"
-INFO_PLIST="$PROJECT_DIR/FlowForgeApp/App-iOS/Info.plist"
+cd "$PROJECT_DIR/ForgeApp"
+INFO_PLIST="$PROJECT_DIR/ForgeApp/App-iOS/Info.plist"
 
 CURRENT_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$INFO_PLIST" 2>/dev/null || echo "1.0.0")
 PREVIOUS_VERSION_TAG=$(git tag -l "v*" --sort=-version:refname | head -1)

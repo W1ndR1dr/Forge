@@ -1,16 +1,16 @@
-# FlowForge: AI-Assisted Parallel Development Orchestrator
+# Forge: AI-Assisted Parallel Development Orchestrator
 
 ## Overview
 
-**FlowForge** is a development orchestration tool that enables systematic, parallel AI-assisted development. It manages feature backlogs, generates optimized Claude Code prompts, automates Git worktree workflows, and orchestrates merges—all designed for a "vibecoder" who wants full automation with human oversight at key decision points.
+**Forge** is a development orchestration tool that enables systematic, parallel AI-assisted development. It manages feature backlogs, generates optimized Claude Code prompts, automates Git worktree workflows, and orchestrates merges—all designed for a "vibecoder" who wants full automation with human oversight at key decision points.
 
-**Project Location**: `~/Projects/Active/FlowForge/`
+**Project Location**: `~/Projects/Active/Forge/`
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                   FlowForge macOS App (SwiftUI)                 │
+│                     Forge macOS App (SwiftUI)                   │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐        │
 │  │ Roadmap  │  │ Feature  │  │  Merge   │  │ Settings │        │
 │  │ (Kanban) │  │  Detail  │  │  Queue   │  │          │        │
@@ -19,7 +19,7 @@
                               │ calls
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                   FlowForge CLI (Python/Typer)                  │
+│                     Forge CLI (Python/Typer)                    │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐        │
 │  │ Registry │  │ Worktree │  │  Prompt  │  │  Merge   │        │
 │  │ Manager  │  │ Manager  │  │ Builder  │  │Orchestr. │        │
@@ -95,7 +95,7 @@
 
 ### Dynamic Persona Generation (AGI-Pilled Approach)
 
-Instead of hardcoded personas, FlowForge uses **tiered intelligence**:
+Instead of hardcoded personas, Forge uses **tiered intelligence**:
 
 **Tier 1: Quick Expert Suggestion**
 ```
@@ -106,14 +106,14 @@ forge start zone2-tracking
 ```
 
 **Tier 2: Deep Research Mode**
-For complex/novel features, FlowForge detects when deep research is warranted:
+For complex/novel features, Forge detects when deep research is warranted:
 ```
 forge start memory-system
 → Claude: "This feature warrants deep research on Anthropic's memory
    philosophy, OpenAI patterns, and academic work on episodic memory"
 → User confirms
 → Opens research threads on Claude.ai / Gemini / ChatGPT
-→ Research saved to .flowforge/research/{feature-id}/
+→ Research saved to .forge/research/{feature-id}/
 → Synthesized into implementation prompt
 ```
 
@@ -156,10 +156,10 @@ forge merge --auto                    # Merge all safe features in order
 
 ## Directory Structure
 
-### FlowForge Tool (new project)
+### Forge Tool (new project)
 ```
-~/Projects/Active/FlowForge/
-├── flowforge/                  # Python CLI package
+~/Projects/Active/Forge/
+├── forge/                      # Python CLI package
 │   ├── __init__.py
 │   ├── __main__.py
 │   ├── cli.py                  # Typer commands
@@ -169,7 +169,7 @@ forge merge --auto                    # Merge all safe features in order
 │   ├── prompt_builder.py       # CLAUDE.md parsing + prompts
 │   ├── merge.py                # Merge orchestration
 │   └── personas.py             # Persona library
-├── FlowForgeApp/               # SwiftUI macOS app
+├── ForgeApp/                   # SwiftUI macOS app
 │   ├── App/
 │   ├── Models/
 │   ├── Views/
@@ -182,11 +182,11 @@ forge merge --auto                    # Merge all safe features in order
 ### Per-Project (created by `forge init`)
 ```
 your-project/
-├── .devflow/
+├── .forge/
 │   ├── registry.json           # Feature database
 │   ├── config.json             # Project settings
 │   └── prompts/                # Generated prompts
-├── .devflow-worktrees/         # Git worktrees
+├── .forge-worktrees/           # Git worktrees
 │   ├── feature-a/
 │   └── feature-b/
 └── CLAUDE.md                   # Existing project docs
@@ -287,36 +287,36 @@ your-project/
 ## Files to Create
 
 ### Python Package
-- `flowforge/__init__.py`
-- `flowforge/__main__.py`
-- `flowforge/cli.py`
-- `flowforge/config.py`
-- `flowforge/registry.py`
-- `flowforge/worktree.py`
-- `flowforge/prompt_builder.py`
-- `flowforge/merge.py`
-- `flowforge/personas.py`
+- `forge/__init__.py`
+- `forge/__main__.py`
+- `forge/cli.py`
+- `forge/config.py`
+- `forge/registry.py`
+- `forge/worktree.py`
+- `forge/prompt_builder.py`
+- `forge/merge.py`
+- `forge/personas.py`
 - `pyproject.toml`
 - `CLAUDE.md`
 
 ### SwiftUI App (Phase 5+)
-- `FlowForgeApp/project.yml`
-- `FlowForgeApp/App/FlowForgeApp.swift`
-- `FlowForgeApp/Models/Feature.swift`
-- `FlowForgeApp/Models/AppState.swift`
-- `FlowForgeApp/Services/CLIBridge.swift`
-- `FlowForgeApp/Services/FileWatcher.swift`
-- `FlowForgeApp/Views/ContentView.swift`
-- `FlowForgeApp/Views/Roadmap/RoadmapView.swift`
-- `FlowForgeApp/Views/Roadmap/FeatureCard.swift`
-- `FlowForgeApp/Views/Detail/FeatureDetailView.swift`
+- `ForgeApp/project.yml`
+- `ForgeApp/App/ForgeApp.swift`
+- `ForgeApp/Models/Feature.swift`
+- `ForgeApp/Models/AppState.swift`
+- `ForgeApp/Services/CLIBridge.swift`
+- `ForgeApp/Services/FileWatcher.swift`
+- `ForgeApp/Views/ContentView.swift`
+- `ForgeApp/Views/Roadmap/RoadmapView.swift`
+- `ForgeApp/Views/Roadmap/FeatureCard.swift`
+- `ForgeApp/Views/Detail/FeatureDetailView.swift`
 
 ---
 
 ## User Decisions (Confirmed)
 
-1. **Project Location**: `~/Projects/Active/FlowForge/`
-2. **Name**: FlowForge (CLI command: `forge`)
+1. **Project Location**: `~/Projects/Active/Forge/`
+2. **Name**: Forge (CLI command: `forge`)
 3. **Test Data**: Import AirFit roadmap features (AGI-Proofing-Plan + MultiSportExpansion)
 
 ---
@@ -335,7 +335,7 @@ Delivered:
 
 ## Phase 2: Merge + Sync + Interoperability
 
-### 2A. Merge Orchestration (`flowforge/merge.py`)
+### 2A. Merge Orchestration (`forge/merge.py`)
 
 ```bash
 forge sync <id>              # Rebase feature onto latest main
@@ -352,7 +352,7 @@ forge merge --auto           # Merge all safe features in dependency order
 - Auto-rollback on validation failure
 - Conflict prompt generation for Claude Code resolution
 
-### 2B. FlowForge MCP Server (for Raspberry Pi) - THE UNLOCK
+### 2B. Forge MCP Server (for Raspberry Pi) - THE UNLOCK
 
 **Why**: Claude Code on iOS supports **Remote MCP Servers**. This enables native integration!
 
@@ -360,16 +360,16 @@ forge merge --auto           # Merge all safe features in dependency order
 ┌─────────────────────────────────────────────────────────────────┐
 │                     Raspberry Pi                                 │
 │  ┌───────────────────────────────────────────────────────────┐  │
-│  │           FlowForge Remote MCP Server                     │  │
+│  │           Forge Remote MCP Server                         │  │
 │  │                                                            │  │
 │  │  Tools (callable from Claude Code iOS/Web):                │  │
-│  │  • flowforge_list_projects()                               │  │
-│  │  • flowforge_list_features(project)                        │  │
-│  │  • flowforge_start_feature(project, feature_id)            │  │
-│  │  • flowforge_stop_feature(project, feature_id)             │  │
-│  │  • flowforge_merge_check(project, feature_id)              │  │
-│  │  • flowforge_merge(project, feature_id)                    │  │
-│  │  • flowforge_status(project)                               │  │
+│  │  • forge_list_projects()                                   │  │
+│  │  • forge_list_features(project)                            │  │
+│  │  • forge_start_feature(project, feature_id)                │  │
+│  │  • forge_stop_feature(project, feature_id)                 │  │
+│  │  • forge_merge_check(project, feature_id)                  │  │
+│  │  • forge_merge(project, feature_id)                        │  │
+│  │  • forge_status(project)                                   │  │
 │  │                                                            │  │
 │  │  Also serves: Simple Web UI for browser access             │  │
 │  └───────────────────────────────────────────────────────────┘  │
@@ -388,23 +388,23 @@ forge merge --auto           # Merge all safe features in dependency order
 **The workflow from iPhone:**
 1. Configure MCP server URL on claude.ai: `https://pi.tailnet:8081/mcp`
 2. In Claude Code iOS: "Start the zone2-tracking feature on AirFit"
-3. Claude calls `flowforge_start_feature("AirFit", "zone2-tracking")`
+3. Claude calls `forge_start_feature("AirFit", "zone2-tracking")`
 4. Pi creates worktree on Mac via SSH, returns prompt
 5. Claude streams the prompt back to you, ready to paste into a new session
 
 **New files:**
-- `flowforge/mcp_server.py` - Remote MCP server implementation
-- `flowforge/server.py` - FastAPI wrapper (serves MCP + web UI)
+- `forge/mcp_server.py` - Remote MCP server implementation
+- `forge/server.py` - FastAPI wrapper (serves MCP + web UI)
 
 ### 2C. Files to Create
 
 | File | Purpose |
 |------|---------|
-| `flowforge/merge.py` | Merge orchestration, conflict detection |
-| `flowforge/mcp_server.py` | Remote MCP server (THE key integration) |
-| `flowforge/server.py` | FastAPI wrapper serving MCP + web UI |
-| `flowforge/remote.py` | SSH execution on remote Mac |
-| `flowforge/templates/` | Simple HTML templates for web UI |
+| `forge/merge.py` | Merge orchestration, conflict detection |
+| `forge/mcp_server.py` | Remote MCP server (THE key integration) |
+| `forge/server.py` | FastAPI wrapper serving MCP + web UI |
+| `forge/remote.py` | SSH execution on remote Mac |
+| `forge/templates/` | Simple HTML templates for web UI |
 
 ---
 
@@ -412,7 +412,7 @@ forge merge --auto           # Merge all safe features in dependency order
 
 ### Design Approach: Meta-Bootstrapping
 
-**Use FlowForge to design FlowForge's UI:**
+**Use Forge to design Forge's UI:**
 1. `forge add "macOS App - Kanban Roadmap"` with UI/design tags
 2. `forge start` triggers expert suggestion: Jony Ive, Dieter Rams, Apple HIG
 3. Deep research on macOS design patterns if warranted
@@ -421,9 +421,9 @@ forge merge --auto           # Merge all safe features in dependency order
 ### App Architecture
 
 ```
-FlowForgeApp/
+ForgeApp/
 ├── App/
-│   └── FlowForgeApp.swift          # @main, WindowGroup
+│   └── ForgeApp.swift              # @main, WindowGroup
 ├── Models/
 │   ├── Feature.swift               # Matches Python schema
 │   ├── Project.swift               # Project config
@@ -443,7 +443,7 @@ FlowForgeApp/
 │       └── MergeQueueView.swift    # Merge orchestration UI
 ├── Services/
 │   ├── CLIBridge.swift             # Calls `forge` via Process
-│   ├── ServerBridge.swift          # Calls FlowForge server API
+│   ├── ServerBridge.swift          # Calls Forge server API
 │   └── FileWatcher.swift           # Watches registry.json
 └── project.yml                     # XcodeGen config
 ```
@@ -454,7 +454,7 @@ FlowForgeApp/
 2. **One-Click Start**: Button creates worktree + copies prompt
 3. **Merge Queue**: Visual merge order with conflict indicators
 4. **Real-Time Updates**: FileWatcher reflects CLI changes instantly
-5. **Multi-Project**: Sidebar shows all FlowForge-initialized projects
+5. **Multi-Project**: Sidebar shows all Forge-initialized projects
 
 ---
 
@@ -469,15 +469,15 @@ FlowForgeApp/
 | **Web Browser** | Pi web UI | Full (visual) |
 | **Claude.ai chat** | Paste generated prompts | Prompt-only |
 
-**The MCP integration means Claude Code on iPhone can natively call FlowForge tools** - no SSH needed, just natural language like "start the zone2 feature on AirFit".
+**The MCP integration means Claude Code on iPhone can natively call Forge tools** - no SSH needed, just natural language like "start the zone2 feature on AirFit".
 
 ---
 
-## Meta-Bootstrapping: Build FlowForge with FlowForge
+## Meta-Bootstrapping: Build Forge with Forge
 
-### Step 1: Initialize FlowForge on itself
+### Step 1: Initialize Forge on itself
 ```bash
-cd ~/Projects/Active/FlowForge
+cd ~/Projects/Active/Forge
 source venv/bin/activate
 forge init
 ```
@@ -485,7 +485,7 @@ forge init
 ### Step 2: Add Phase 2 Features
 ```bash
 forge add "Merge Orchestration" --desc "forge sync, merge-check, merge commands" --tags "git,core" --priority 1
-forge add "FlowForge Server" --desc "HTTP API for remote access" --tags "api,fastapi" --priority 2
+forge add "Forge Server" --desc "HTTP API for remote access" --tags "api,fastapi" --priority 2
 forge add "macOS App - Kanban" --desc "SwiftUI Kanban roadmap view" --tags "ui,swiftui,design" --priority 3
 forge add "macOS App - Detail Views" --desc "Feature detail, merge queue views" --tags "ui,swiftui" --priority 4
 ```
@@ -494,12 +494,12 @@ forge add "macOS App - Detail Views" --desc "Feature detail, merge queue views" 
 ```bash
 # Terminal 1
 forge start merge-orchestration
-cd .flowforge-worktrees/merge-orchestration
+cd .forge-worktrees/merge-orchestration
 claude --dangerously-skip-permissions
 
 # Terminal 2
-forge start flowforge-server
-cd .flowforge-worktrees/flowforge-server
+forge start forge-server
+cd .forge-worktrees/forge-server
 claude --dangerously-skip-permissions
 
 # Terminal 3 (after merge/sync work)
@@ -519,7 +519,7 @@ forge start macos-app-kanban --deep-research  # Triggers UI expert consultation
 4. **Test on Pi** - Deploy, test remote access
 
 ### Following Session
-5. **SwiftUI App** - Use FlowForge to plan, experts for design
+5. **SwiftUI App** - Use Forge to plan, experts for design
 6. **Polish** - Settings, multi-project, keyboard shortcuts
 
 ---
@@ -536,7 +536,7 @@ forge start macos-app-kanban --deep-research  # Triggers UI expert consultation
 │              (pi.tailnet - same network as AirFit)               │
 │                                                                  │
 │  ┌────────────────────────────────────────────────────────────┐ │
-│  │  FlowForge MCP Server (:8081)    AirFit Server (:8080)     │ │
+│  │  Forge MCP Server (:8081)        AirFit Server (:8080)     │ │
 │  │  • MCP tools for Claude Code     • Chat, insights, etc     │ │
 │  │  • Web UI for browser            • Already planned!        │ │
 │  └────────────────────────────────────────────────────────────┘ │
@@ -553,12 +553,12 @@ forge start macos-app-kanban --deep-research  # Triggers UI expert consultation
 └─────────────────┴─────────────────┴─────────────────┘
 ```
 
-**Key insight**: Same Pi, same Tailscale network as AirFit. FlowForge just runs alongside it.
+**Key insight**: Same Pi, same Tailscale network as AirFit. Forge just runs alongside it.
 
 ### Client Usage Patterns
 
 **On Mac (primary):**
-- Use beautiful **FlowForge macOS app** for visual management
+- Use beautiful **Forge macOS app** for visual management
 - Or `forge` CLI directly when you prefer terminal
 - Claude Code sessions run locally with full performance
 
@@ -569,7 +569,7 @@ forge start macos-app-kanban --deep-research  # Triggers UI expert consultation
 ```
 You: "Start the morning-briefings feature on AirFit"
 
-Claude: [Calls flowforge_start_feature("AirFit", "morning-briefings")]
+Claude: [Calls forge_start_feature("AirFit", "morning-briefings")]
 
         ✅ Created worktree at /Users/brian/.../morning-briefings
         ✅ Branch: feature/morning-briefings
@@ -580,7 +580,7 @@ Claude: [Calls flowforge_start_feature("AirFit", "morning-briefings")]
         Ready to implement! Open a new session in the worktree directory.
 ```
 
-**No SSH, no curl, no manual steps** - Claude Code speaks directly to FlowForge via MCP.
+**No SSH, no curl, no manual steps** - Claude Code speaks directly to Forge via MCP.
 
 **From Web Browser:**
 - Navigate to `http://pi.tailnet:8081`
@@ -594,22 +594,22 @@ Claude: [Calls flowforge_start_feature("AirFit", "morning-briefings")]
 - Tailscale running on Pi, Mac, iPhone
 - Pi can SSH to Mac (for remote worktree creation)
 
-**Deploy FlowForge Server:**
+**Deploy Forge Server:**
 ```bash
 # On Pi
-git clone <flowforge-repo> ~/flowforge
-cd ~/flowforge
+git clone <forge-repo> ~/forge
+cd ~/forge
 python -m venv venv
 source venv/bin/activate
 pip install -e .
 
 # Configure connection to Mac
-export FLOWFORGE_MAC_HOST="mac.tailnet"
-export FLOWFORGE_MAC_USER="brian"
-export FLOWFORGE_PROJECTS_PATH="/Users/brian/Projects/Active"
+export FORGE_MAC_HOST="mac.tailnet"
+export FORGE_MAC_USER="brian"
+export FORGE_PROJECTS_PATH="/Users/brian/Projects/Active"
 
 # Run server (or use systemd for auto-start)
-python -m flowforge.server --host 0.0.0.0 --port 8081
+python -m forge.server --host 0.0.0.0 --port 8081
 ```
 
 **Access from anywhere:**
@@ -625,7 +625,7 @@ http://pi.tailnet:8081/api/AirFit/features # Features list
 
 | You're On | Use This | Experience |
 |-----------|----------|------------|
-| **Mac** | FlowForge macOS App | Beautiful Kanban, drag-drop, one-click start |
+| **Mac** | Forge macOS App | Beautiful Kanban, drag-drop, one-click start |
 | **Mac (terminal fan)** | `forge` CLI | Full power, direct control |
 | **iPhone** | Claude Code + SSH to Mac | Full workflow via Tailscale |
 | **iPhone** | Claude Code + Pi API | Lighter, just get prompts |

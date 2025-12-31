@@ -1,17 +1,17 @@
 #!/bin/bash
-# FlowForge macOS Release Script
+# Forge macOS Release Script
 # Automated Sparkle release - similar to TestFlight deployment
 
 set -e
 
 # Configuration
-APP_NAME="FlowForge"
-BUNDLE_ID="com.flowforge.app"
-FLOWFORGE_DIR="/Users/Brian/Projects/Active/FlowForge"
-APP_DIR="$FLOWFORGE_DIR/FlowForgeApp"
+APP_NAME="Forge"
+BUNDLE_ID="com.forge.app"
+FORGE_DIR="/Users/Brian/Projects/Active/Forge"
+APP_DIR="$FORGE_DIR/ForgeApp"
 BUILD_DIR="$APP_DIR/build"
-RELEASES_DIR="$FLOWFORGE_DIR/releases"
-KEYS_DIR="$HOME/.flowforge-keys"
+RELEASES_DIR="$FORGE_DIR/releases"
+KEYS_DIR="$HOME/.forge-keys"
 SPARKLE_VERSION="2.6.0"
 SPARKLE_DIR="$KEYS_DIR/Sparkle"
 
@@ -22,8 +22,8 @@ BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-echo -e "${BLUE}🚀 FlowForge macOS Release (Sparkle)${NC}"
-echo "======================================="
+echo -e "${BLUE}🚀 Forge macOS Release (Sparkle)${NC}"
+echo "=================================="
 
 # Parse arguments
 AUTO_VERSION=false
@@ -57,7 +57,7 @@ mkdir -p "$KEYS_DIR"
 
 # Step 0: Check git status
 echo -e "\n${BLUE}🔍 Checking git status...${NC}"
-cd "$FLOWFORGE_DIR"
+cd "$FORGE_DIR"
 if [[ -n $(git status --porcelain) ]]; then
     echo -e "${YELLOW}⚠️  Warning: Uncommitted changes exist${NC}"
     git status --short
@@ -168,8 +168,8 @@ xcodegen generate
 
 # Build Release
 echo -e "\n${BLUE}📦 Building Release...${NC}"
-xcodebuild -project FlowForgeApp.xcodeproj \
-    -scheme FlowForgeApp \
+xcodebuild -project ForgeApp.xcodeproj \
+    -scheme ForgeApp \
     -configuration Release \
     -derivedDataPath build \
     ONLY_ACTIVE_ARCH=YES \
@@ -195,8 +195,8 @@ echo "Signature: ${SIGNATURE:0:20}..."
 
 # Update appcast.xml
 echo -e "\n${BLUE}📝 Updating appcast.xml...${NC}"
-APPCAST="$FLOWFORGE_DIR/appcast.xml"
-DOWNLOAD_URL="https://github.com/W1ndR1dr/FlowForge/releases/download/v$VERSION/$ZIP_NAME"
+APPCAST="$FORGE_DIR/appcast.xml"
+DOWNLOAD_URL="https://github.com/W1ndR1dr/Forge/releases/download/v$VERSION/$ZIP_NAME"
 PUB_DATE=$(date -R)
 
 # Generate release notes with LLM sanity check
@@ -206,11 +206,11 @@ if [ -n "$LAST_TAG" ]; then
 else
     COMMITS=$(git log --oneline -10)
 fi
-CHANGED_FILES=$(git diff --name-only HEAD~10..HEAD -- FlowForgeApp/ 2>/dev/null | head -30)
+CHANGED_FILES=$(git diff --name-only HEAD~10..HEAD -- ForgeApp/ 2>/dev/null | head -30)
 
 if command -v claude &> /dev/null; then
     # Build prompt with variables pre-expanded (heredoc quoting prevents expansion)
-    PROMPT_TEXT="You are a release engineer for FlowForge, a vibecoder's development workflow tool.
+    PROMPT_TEXT="You are a release engineer for Forge, a vibecoder's development workflow tool.
 
 TASK: Analyze these commits and provide:
 1. macOS Sparkle release notes - 2-4 friendly bullet points
@@ -270,13 +270,13 @@ cat > "$APPCAST" << EOF
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
     <channel>
-        <title>FlowForge Updates</title>
-        <link>https://github.com/W1ndR1dr/FlowForge</link>
-        <description>FlowForge auto-update feed</description>
+        <title>Forge Updates</title>
+        <link>https://github.com/W1ndR1dr/Forge</link>
+        <description>Forge auto-update feed</description>
         <language>en</language>
 
         <item>
-            <title>FlowForge $VERSION</title>
+            <title>Forge $VERSION</title>
             <description><![CDATA[
                 <h2>What's New in $VERSION</h2>
                 <ul>
@@ -305,7 +305,7 @@ cp -R "$APP_PATH" "/Applications/"
 
 # Create GitHub release and push
 echo -e "\n${BLUE}🚀 Creating GitHub release...${NC}"
-cd "$FLOWFORGE_DIR"
+cd "$FORGE_DIR"
 
 # Commit appcast and version changes
 git add appcast.xml "$INFO_PLIST"
@@ -317,7 +317,7 @@ git push origin main
 
 # Create GitHub release
 gh release create "v$VERSION" "$ZIP_PATH" \
-    --title "FlowForge $VERSION" \
+    --title "Forge $VERSION" \
     --notes "## What's New
 
 $RELEASE_NOTES
@@ -334,7 +334,7 @@ echo -e "Version: ${GREEN}$VERSION${NC} (Build $BUILD_NUMBER)"
 echo -e "Archive: $ZIP_PATH"
 echo ""
 echo "Sparkle will auto-update existing users!"
-echo "GitHub: https://github.com/W1ndR1dr/FlowForge/releases/tag/v$VERSION"
+echo "GitHub: https://github.com/W1ndR1dr/Forge/releases/tag/v$VERSION"
 
 # Check if iOS companion also needs deployment (from LLM analysis)
 if [[ -n "$DEPLOY_IOS_TOO" ]]; then
@@ -343,7 +343,7 @@ if [[ -n "$DEPLOY_IOS_TOO" ]]; then
     echo "   Run: ./scripts/deploy-to-testflight.sh --auto"
 else
     # Fallback to simple check if LLM didn't run
-    source "$FLOWFORGE_DIR/scripts/check-deploy-scope.sh" 2>/dev/null || true
+    source "$FORGE_DIR/scripts/check-deploy-scope.sh" 2>/dev/null || true
     COMPANION=$(check_companion_deploy "macos" 2>/dev/null || echo "")
     if [ "$COMPANION" = "ios" ]; then
         echo ""

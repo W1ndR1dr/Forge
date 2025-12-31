@@ -1,10 +1,10 @@
-# FlowForge Development Context
+# Forge Development Context
 
 This file captures the full context from the initial development session so future Claude sessions can continue seamlessly.
 
-## What FlowForge Is
+## What Forge Is
 
-An AI-assisted parallel development orchestrator for "vibecoders" - developers who work with AI assistance but aren't Git experts. FlowForge handles:
+An AI-assisted parallel development orchestrator for "vibecoders" - developers who work with AI assistance but aren't Git experts. Forge handles:
 
 1. **Feature Registry** - Hierarchical feature tracking with dependencies
 2. **Git Worktrees** - Parallel development via isolated directories
@@ -14,7 +14,7 @@ An AI-assisted parallel development orchestrator for "vibecoders" - developers w
 
 ## User Context
 
-- **Primary projects**: AirFit (iOS + Python), FlowForge itself
+- **Primary projects**: AirFit (iOS + Python), Forge itself
 - **Hardware**: Mac + Raspberry Pi (brand new, not set up yet) + iPhone
 - **Network**: Tailscale for secure connectivity
 - **Workflow**: Uses Claude Code extensively, wants full iPhone integration
@@ -25,7 +25,7 @@ An AI-assisted parallel development orchestrator for "vibecoders" - developers w
 1. **Dynamic personas over hardcoded** - AI suggests relevant experts per feature, not fixed personas
 2. **Tiered intelligence** - Tier 1 (quick experts), Tier 2 (deep research), Tier 3 (multi-model)
 3. **MCP over SSH for iPhone** - Claude Code iOS uses Remote MCP Server, not SSH commands
-4. **Pi as always-on hub** - FlowForge server on Pi, worktrees created on Mac via SSH
+4. **Pi as always-on hub** - Forge server on Pi, worktrees created on Mac via SSH
 5. **Tailscale for networking** - Secure VPN, no port forwarding needed
 
 ## What's Been Built (Phases 1 & 2)
@@ -51,25 +51,25 @@ pip install -e ".[server]"    # Install with server deps
 forge-server                  # Run on http://0.0.0.0:8081
 
 # Environment variables:
-FLOWFORGE_PROJECTS_PATH=/Users/Brian/Projects/Active
-FLOWFORGE_MAC_HOST=macs-tailscale-hostname
-FLOWFORGE_MAC_USER=Brian
-FLOWFORGE_PORT=8081
+FORGE_PROJECTS_PATH=/Users/Brian/Projects/Active
+FORGE_MAC_HOST=macs-tailscale-hostname
+FORGE_MAC_USER=Brian
+FORGE_PORT=8081
 ```
 
 ### MCP Tools Available
-- `flowforge_list_projects` - List all projects
-- `flowforge_list_features` - List features in project
-- `flowforge_status` - Project status overview
-- `flowforge_start_feature` - Start feature (creates worktree)
-- `flowforge_stop_feature` - Mark for review
-- `flowforge_merge_check` - Check merge readiness
-- `flowforge_merge` - Execute merge
-- `flowforge_add_feature` - Add new feature
+- `forge_list_projects` - List all projects
+- `forge_list_features` - List features in project
+- `forge_status` - Project status overview
+- `forge_start_feature` - Start feature (creates worktree)
+- `forge_stop_feature` - Mark for review
+- `forge_merge_check` - Check merge readiness
+- `forge_merge` - Execute merge
+- `forge_add_feature` - Add new feature
 
 ### Files Created
 ```
-flowforge/
+forge/
 ├── __init__.py
 ├── __main__.py
 ├── cli.py              # All CLI commands
@@ -100,11 +100,11 @@ docs/
 - ✅ `GET /mcp/tools` - lists all 8 MCP tools
 - ✅ `POST /mcp/tools/call` - executes tools correctly
 - ✅ Web UI at `http://localhost:8081/` - shows projects and features
-- ✅ FlowForge initialized on itself (meta-bootstrap)
+- ✅ Forge initialized on itself (meta-bootstrap)
 
 ## What's Next (Phase 3)
 
-Features tracked in FlowForge's own registry:
+Features tracked in Forge's own registry:
 
 1. **macOS App - Kanban Roadmap** (priority 1)
    - SwiftUI Kanban board for visual feature management
@@ -124,7 +124,7 @@ User has a new Pi kit, hasn't assembled it yet. Created comprehensive setup guid
 - SD card flashing with Raspberry Pi Imager
 - First boot and SSH access
 - Tailscale installation
-- FlowForge installation
+- Forge installation
 - SSH key setup for Pi→Mac
 - Systemd service creation
 - Claude Code iOS configuration
@@ -135,7 +135,7 @@ User has a new Pi kit, hasn't assembled it yet. Created comprehensive setup guid
 ┌─────────────────────────────────────────────────────────────────┐
 │                     Raspberry Pi (Tailscale)                     │
 │  ┌────────────────────────────────────────────────────────────┐ │
-│  │  FlowForge Server (:8081)                                  │ │
+│  │  Forge Server (:8081)                                      │ │
 │  │  • MCP endpoints for Claude Code iOS                       │ │
 │  │  • REST API for programmatic access                        │ │
 │  │  • Web UI for browser                                      │ │
@@ -156,7 +156,7 @@ User has a new Pi kit, hasn't assembled it yet. Created comprehensive setup guid
 
 Start a new Claude Code session:
 ```bash
-cd ~/Projects/Active/FlowForge
+cd ~/Projects/Active/Forge
 claude
 ```
 

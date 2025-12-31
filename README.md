@@ -1,4 +1,4 @@
-# FlowForge
+# Forge
 
 AI-assisted parallel development orchestrator.
 
@@ -28,4 +28,4 @@ forge start my-feature
 ## Philosophy
 
 Built for "vibecoders" who work with AI assistance but may not be Git experts.
-FlowForge handles the complexity so you can focus on features.
+Forge handles the complexity so you can focus on features.

@@ -2,8 +2,8 @@
 # Helper script to determine which platforms need deployment
 # Used by both deploy-to-testflight.sh and release-macos.sh
 
-FLOWFORGE_DIR="/Users/Brian/Projects/Active/FlowForge"
-APP_DIR="$FLOWFORGE_DIR/FlowForgeApp"
+FORGE_DIR="/Users/Brian/Projects/Active/Forge"
+APP_DIR="$FORGE_DIR/ForgeApp"
 
 # Get the last release tags
 LAST_IOS_TAG=$(git tag -l "ios-*" --sort=-v:refname | head -1)
@@ -13,9 +13,9 @@ LAST_MACOS_TAG=$(git tag -l "v*" --sort=-v:refname | head -1)
 get_changed_files() {
     local since_tag="$1"
     if [ -n "$since_tag" ]; then
-        git diff --name-only "$since_tag"..HEAD -- FlowForgeApp/
+        git diff --name-only "$since_tag"..HEAD -- ForgeApp/
     else
-        git diff --name-only HEAD~10..HEAD -- FlowForgeApp/
+        git diff --name-only HEAD~10..HEAD -- ForgeApp/
     fi
 }
 
@@ -80,7 +80,7 @@ if [ "${BASH_SOURCE[0]}" = "$0" ]; then
     changed=$(get_changed_files "")
 
     echo ""
-    echo "Changed files in FlowForgeApp/:"
+    echo "Changed files in ForgeApp/:"
     echo "$changed" | head -20
 
     echo ""

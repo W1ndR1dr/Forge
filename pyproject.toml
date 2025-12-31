@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "flowforge"
+name = "forge"
 version = "0.1.0"
 description = "AI-assisted parallel development orchestrator"
 readme = "README.md"
@@ -26,8 +26,8 @@ server = [
 ]
 
 [project.scripts]
-forge = "flowforge.cli:app"
-forge-server = "flowforge.server:main"
+forge = "forge.cli:app"
+forge-server = "forge.server:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["flowforge"]
+packages = ["forge"]

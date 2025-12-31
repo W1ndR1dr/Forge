@@ -1,5 +1,5 @@
 #!/bin/bash
-# FlowForge Ship Script
+# Forge Ship Script
 # One command to rule them all: builds and deploys whatever needs deploying
 #
 # USAGE:
@@ -41,8 +41,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 echo ""
-echo -e "${BLUE}🚢 FlowForge Ship${NC}"
-echo "=================="
+echo -e "${BLUE}🚢 Forge Ship${NC}"
+echo "=============="
 echo ""
 
 # Check git status
@@ -80,7 +80,7 @@ echo ""
 if [[ "$ios_needed" == "no" ]] && [[ "$macos_needed" == "no" ]]; then
     echo -e "${GREEN}✅ Everything is up to date!${NC}"
     echo ""
-    echo "No FlowForgeApp/ changes since last deploy."
+    echo "No ForgeApp/ changes since last deploy."
     echo "Use --force to deploy anyway."
     exit 0
 fi
@@ -115,10 +115,10 @@ if [[ "$ios_needed" == "yes" ]]; then
     ./scripts/deploy-to-testflight.sh --auto
 
     # Commit the version bump
-    if [[ -n $(git status --porcelain FlowForgeApp/App-iOS/Info.plist 2>/dev/null) ]]; then
-        VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" FlowForgeApp/App-iOS/Info.plist)
-        BUILD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" FlowForgeApp/App-iOS/Info.plist)
-        git add FlowForgeApp/App-iOS/Info.plist
+    if [[ -n $(git status --porcelain ForgeApp/App-iOS/Info.plist 2>/dev/null) ]]; then
+        VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" ForgeApp/App-iOS/Info.plist)
+        BUILD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" ForgeApp/App-iOS/Info.plist)
+        git add ForgeApp/App-iOS/Info.plist
         git commit -m "chore: Bump iOS to $VERSION ($BUILD) for TestFlight"
         git push
     fi
@@ -134,12 +134,12 @@ if [[ -n "$PYTHON_CHANGED" ]] || [[ "$FORCE" == true ]]; then
     # Pi is the ONLY server in this architecture (no local server)
     # Check if Pi is reachable and update it
     if ssh -o ConnectTimeout=5 brian@raspberrypi "echo ok" &>/dev/null; then
-        ssh brian@raspberrypi "cd ~/flowforge && git pull && sudo systemctl restart flowforge"
+        ssh brian@raspberrypi "cd ~/forge && git pull && sudo systemctl restart forge"
         sleep 2
         if curl -s --connect-timeout 5 http://raspberrypi:8081/health > /dev/null; then
             echo -e "${GREEN}✅ Pi server updated and restarted${NC}"
         else
-            echo -e "${YELLOW}⚠️  Pi server may not have started - check with: ssh brian@raspberrypi 'sudo journalctl -u flowforge -n 20'${NC}"
+            echo -e "${YELLOW}⚠️  Pi server may not have started - check with: ssh brian@raspberrypi 'sudo journalctl -u forge -n 20'${NC}"
         fi
     else
         echo -e "${YELLOW}⚠️  Pi not reachable - skipping server update${NC}"
@@ -155,4 +155,4 @@ echo ""
 echo ""
 
 # Launch the app
-open /Applications/FlowForge.app 2>/dev/null || true
+open /Applications/Forge.app 2>/dev/null || true

@@ -1,0 +1,411 @@
+"""Feature registry for Forge."""
+
+from dataclasses import dataclass, field, asdict, fields
+from datetime import datetime
+from enum import Enum
+from pathlib import Path
+from typing import Optional
+import json
+import re
+
+
+class FeatureStatus(str, Enum):
+    """Status of a feature in the development lifecycle."""
+
+    INBOX = "inbox"  # Raw captures, quick thoughts - not counted in slot limit
+    IDEA = "idea"  # Refined, ready to build (was "planned")
+    IN_PROGRESS = "in-progress"
+    REVIEW = "review"
+    COMPLETED = "completed"
+    BLOCKED = "blocked"
+
+
+# =============================================================================
+# Shipping Machine Constraints (Wave 4)
+# =============================================================================
+
+MAX_PLANNED_FEATURES = 99  # Ideas are unlimited - discipline comes at START, not CAPTURE
+
+
+class Complexity(str, Enum):
+    """Estimated complexity/size of a feature."""
+
+    SMALL = "small"      # 1-2 files, < 1 hour
+    MEDIUM = "medium"    # 3-5 files, few hours
+    LARGE = "large"      # 6+ files, multi-day
+    EPIC = "epic"        # Multiple features, multi-week
+
+
+@dataclass
+class Feature:
+    """A feature or sub-feature in the development roadmap."""
+
+    id: str
+    title: str
+    description: str = ""
+    status: FeatureStatus = FeatureStatus.IDEA
+    priority: int = 5  # 1 = highest, 10 = lowest
+    complexity: Complexity = Complexity.MEDIUM
+
+    # Hierarchy
+    parent_id: Optional[str] = None
+    children: list[str] = field(default_factory=list)
+
+    # Dependencies
+    depends_on: list[str] = field(default_factory=list)
+    blocked_by: list[str] = field(default_factory=list)
+
+    # Git integration
+    branch: Optional[str] = None
+    worktree_path: Optional[str] = None
+
+    # Timestamps
+    created_at: str = field(default_factory=lambda: datetime.now().isoformat())
+    updated_at: str = field(default_factory=lambda: datetime.now().isoformat())
+    started_at: Optional[str] = None  # When feature was started (in-progress)
+    completed_at: Optional[str] = None  # When feature was shipped
+
+    # Documentation
+    spec_path: Optional[str] = None
+    prompt_path: Optional[str] = None
+
+    # Metadata
+    tags: list[str] = field(default_factory=list)
+    extensions: dict = field(default_factory=dict)
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for JSON serialization."""
+        data = asdict(self)
+        data["status"] = self.status.value
+        data["complexity"] = self.complexity.value
+        return data
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Feature":
+        """Create Feature from dictionary."""
+        data = data.copy()
+        data["status"] = FeatureStatus(data.get("status", "idea"))
+        data["complexity"] = Complexity(data.get("complexity", "medium"))
+        # Filter to only known fields (handles schema migrations gracefully)
+        known_fields = {f.name for f in fields(cls)}
+        filtered_data = {k: v for k, v in data.items() if k in known_fields}
+        return cls(**filtered_data)
+
+
+@dataclass
+class MergeQueueItem:
+    """An item in the merge queue."""
+
+    feature_id: str
+    queued_at: str = field(default_factory=lambda: datetime.now().isoformat())
+    status: str = "pending"  # pending, validating, ready, conflict, merged
+
+
+@dataclass
+class ShippingStats:
+    """
+    Shipping streak statistics for gamification.
+
+    Inspired by BJ Fogg's tiny habits + Nir Eyal's variable rewards.
+    The streak creates positive reinforcement for daily shipping.
+    """
+
+    current_streak: int = 0
+    longest_streak: int = 0
+    total_shipped: int = 0
+    last_ship_date: Optional[str] = None  # ISO date string (YYYY-MM-DD)
+
+    def to_dict(self) -> dict:
+        return {
+            "current_streak": self.current_streak,
+            "longest_streak": self.longest_streak,
+            "total_shipped": self.total_shipped,
+            "last_ship_date": self.last_ship_date,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "ShippingStats":
+        return cls(
+            current_streak=data.get("current_streak", 0),
+            longest_streak=data.get("longest_streak", 0),
+            total_shipped=data.get("total_shipped", 0),
+            last_ship_date=data.get("last_ship_date"),
+        )
+
+
+class FeatureRegistry:
+    """
+    Manages the feature registry for a project.
+
+    Stores features in .forge/registry.json with full CRUD operations,
+    hierarchical relationships, and dependency tracking.
+    """
+
+    def __init__(self, project_root: Path):
+        self.project_root = project_root
+        self.registry_path = project_root / ".forge" / "registry.json"
+        self._features: dict[str, Feature] = {}
+        self._merge_queue: list[MergeQueueItem] = []
+        self._shipping_stats: ShippingStats = ShippingStats()
+
+    @classmethod
+    def load(cls, project_root: Path) -> "FeatureRegistry":
+        """Load registry from disk."""
+        registry = cls(project_root)
+
+        if registry.registry_path.exists():
+            with open(registry.registry_path) as f:
+                data = json.load(f)
+
+            for fid, fdata in data.get("features", {}).items():
+                registry._features[fid] = Feature.from_dict(fdata)
+
+            for item in data.get("merge_queue", []):
+                registry._merge_queue.append(MergeQueueItem(**item))
+
+            # Load shipping stats
+            if "shipping_stats" in data:
+                registry._shipping_stats = ShippingStats.from_dict(data["shipping_stats"])
+
+        return registry
+
+    @classmethod
+    def create_new(cls, project_root: Path) -> "FeatureRegistry":
+        """Create a new empty registry."""
+        registry = cls(project_root)
+        registry.save()
+        return registry
+
+    def save(self) -> None:
+        """Save registry to disk."""
+        self.registry_path.parent.mkdir(parents=True, exist_ok=True)
+
+        data = {
+            "version": "1.0.0",
+            "features": {fid: f.to_dict() for fid, f in self._features.items()},
+            "merge_queue": [asdict(item) for item in self._merge_queue],
+            "shipping_stats": self._shipping_stats.to_dict(),
+        }
+
+        with open(self.registry_path, "w") as f:
+            json.dump(data, f, indent=2)
+
+    # CRUD Operations
+
+    def add_feature(self, feature: Feature) -> Feature:
+        """Add a new feature to the registry."""
+        if feature.id in self._features:
+            raise ValueError(f"Feature already exists: {feature.id}")
+
+        self._features[feature.id] = feature
+
+        # Update parent's children list if this is a sub-feature
+        if feature.parent_id and feature.parent_id in self._features:
+            parent = self._features[feature.parent_id]
+            if feature.id not in parent.children:
+                parent.children.append(feature.id)
+                parent.updated_at = datetime.now().isoformat()
+
+        self.save()
+        return feature
+
+    def get_feature(self, feature_id: str) -> Optional[Feature]:
+        """Get a feature by ID."""
+        return self._features.get(feature_id)
+
+    def update_feature(self, feature_id: str, **updates) -> Feature:
+        """Update a feature's attributes."""
+        if feature_id not in self._features:
+            raise ValueError(f"Feature not found: {feature_id}")
+
+        feature = self._features[feature_id]
+
+        for key, value in updates.items():
+            if hasattr(feature, key):
+                if key == "status" and isinstance(value, str):
+                    value = FeatureStatus(value)
+                elif key == "complexity" and isinstance(value, str):
+                    value = Complexity(value)
+                setattr(feature, key, value)
+
+        feature.updated_at = datetime.now().isoformat()
+        self.save()
+        return feature
+
+    def remove_feature(self, feature_id: str, force: bool = False) -> None:
+        """
+        Remove a feature from the registry.
+
+        Safety: Requires force=True if feature has children or is in-progress.
+        """
+        if feature_id not in self._features:
+            return
+
+        feature = self._features[feature_id]
+
+        if not force:
+            if feature.children:
+                raise ValueError(
+                    f"Feature has children: {feature.children}. Use force=True to remove."
+                )
+            if feature.status == FeatureStatus.IN_PROGRESS:
+                raise ValueError(
+                    "Feature is in-progress. Use force=True to remove."
+                )
+
+        # Remove from parent's children list
+        if feature.parent_id and feature.parent_id in self._features:
+            parent = self._features[feature.parent_id]
+            if feature_id in parent.children:
+                parent.children.remove(feature_id)
+
+        del self._features[feature_id]
+        self.save()
+
+    def list_features(
+        self,
+        status: Optional[FeatureStatus] = None,
+        parent_id: Optional[str] = None,
+        tags: Optional[list[str]] = None,
+    ) -> list[Feature]:
+        """List features with optional filtering."""
+        features = list(self._features.values())
+
+        if status:
+            features = [f for f in features if f.status == status]
+
+        if parent_id is not None:
+            features = [f for f in features if f.parent_id == parent_id]
+
+        if tags:
+            features = [f for f in features if any(t in f.tags for t in tags)]
+
+        return sorted(features, key=lambda f: (f.priority, f.created_at))
+
+    def get_root_features(self) -> list[Feature]:
+        """Get top-level features (no parent)."""
+        return self.list_features(parent_id=None)
+
+    def get_children(self, feature_id: str) -> list[Feature]:
+        """Get children of a feature."""
+        return self.list_features(parent_id=feature_id)
+
+    # Dependency operations
+
+    def get_ready_features(self) -> list[Feature]:
+        """
+        Get features that are ready to start (ideas, no unmet dependencies).
+        """
+        ready = []
+        for feature in self.list_features(status=FeatureStatus.IDEA):
+            deps_met = all(
+                self._features.get(dep, Feature(id="", title="")).status == FeatureStatus.COMPLETED
+                for dep in feature.depends_on
+            )
+            if deps_met and not feature.blocked_by:
+                ready.append(feature)
+        return ready
+
+    def get_merge_candidates(self) -> list[Feature]:
+        """Get features in review status ready for merge."""
+        return self.list_features(status=FeatureStatus.REVIEW)
+
+    # ID generation
+
+    @staticmethod
+    def generate_id(title: str) -> str:
+        """Generate a URL-safe ID from a title."""
+        # Lowercase, replace spaces with hyphens, remove special chars
+        id_str = title.lower()
+        id_str = re.sub(r"[^\w\s-]", "", id_str)
+        id_str = re.sub(r"[\s_]+", "-", id_str)
+        id_str = re.sub(r"-+", "-", id_str)
+        return id_str.strip("-")[:50]  # Max 50 chars
+
+    # Statistics
+
+    def get_stats(self) -> dict:
+        """Get summary statistics."""
+        by_status = {}
+        for status in FeatureStatus:
+            by_status[status.value] = len(self.list_features(status=status))
+
+        return {
+            "total": len(self._features),
+            "by_status": by_status,
+            "active_worktrees": len([
+                f for f in self._features.values() if f.worktree_path
+            ]),
+            "ready_to_start": len(self.get_ready_features()),
+            "ready_to_merge": len(self.get_merge_candidates()),
+        }
+
+    # Shipping Machine Constraints
+
+    def count_ideas(self) -> int:
+        """Count features in idea status (refined, ready to build)."""
+        return len(self.list_features(status=FeatureStatus.IDEA))
+
+    def can_add_idea(self) -> bool:
+        """Check if we can add another idea (max constraint)."""
+        return self.count_ideas() < MAX_PLANNED_FEATURES
+
+    def get_idea_titles(self) -> list[str]:
+        """Get titles of idea features (for error messages)."""
+        return [f.title for f in self.list_features(status=FeatureStatus.IDEA)]
+
+    # Shipping Streak
+
+    def get_shipping_stats(self) -> ShippingStats:
+        """Get current shipping stats."""
+        return self._shipping_stats
+
+    def record_ship(self) -> ShippingStats:
+        """
+        Record a ship event and update the streak.
+
+        Called when a feature is successfully merged.
+        Updates streak based on whether shipping happened today or yesterday.
+        """
+        today = datetime.now().date().isoformat()
+        yesterday = (datetime.now().date() - __import__('datetime').timedelta(days=1)).isoformat()
+
+        stats = self._shipping_stats
+
+        # Update total
+        stats.total_shipped += 1
+
+        # Update streak
+        if stats.last_ship_date == today:
+            # Already shipped today - no streak change
+            pass
+        elif stats.last_ship_date == yesterday:
+            # Shipped yesterday - extend streak
+            stats.current_streak += 1
+        elif stats.last_ship_date is None:
+            # First ship ever
+            stats.current_streak = 1
+        else:
+            # Streak broken - start fresh
+            stats.current_streak = 1
+
+        # Update longest streak
+        if stats.current_streak > stats.longest_streak:
+            stats.longest_streak = stats.current_streak
+
+        # Update last ship date
+        stats.last_ship_date = today
+
+        self.save()
+        return stats
+
+    def get_streak_display(self) -> str:
+        """Get a formatted streak display string for UI."""
+        stats = self._shipping_stats
+
+        if stats.current_streak == 0:
+            return "No streak yet"
+        elif stats.current_streak == 1:
+            return "🔥 1 day"
+        else:
+            return f"🔥 {stats.current_streak} days"

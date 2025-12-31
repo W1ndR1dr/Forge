@@ -6,7 +6,7 @@ Copy this section to any project's CLAUDE.md to establish workflow expectations 
 
 ## Workflow Context
 
-This project uses an AGI-pilled development workflow with FlowForge orchestration.
+This project uses an AGI-pilled development workflow with Forge orchestration.
 
 ### What This Means for Claude Code
 
@@ -46,4 +46,4 @@ You're in the BUILD phase. Your job is to implement the feature described in the
 
 ---
 
-*Full workflow documentation: https://github.com/[user]/FlowForge/blob/main/docs/WORKFLOW.md*
+*Full workflow documentation: https://github.com/W1ndR1dr/Forge/blob/main/docs/WORKFLOW.md*

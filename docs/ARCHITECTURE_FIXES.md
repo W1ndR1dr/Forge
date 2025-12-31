@@ -1,6 +1,6 @@
-# FlowForge Architecture Fixes
+# Forge Architecture Fixes
 
-**Purpose:** Guide for Claude Code agents to fix remaining pain points in FlowForge.
+**Purpose:** Guide for Claude Code agents to fix remaining pain points in Forge.
 **Status:** Some issues already solved, others need work.
 
 ## Current Architecture (Correct Understanding)
@@ -9,22 +9,22 @@
 ┌─────────────────┐     ┌──────────────────────────────────────────────┐
 │   iOS App       │────▶│  Raspberry Pi (raspberrypi:8081)             │
 │   (Ideas only)  │     │                                              │
-└─────────────────┘     │  FlowForge Server                            │
+└─────────────────┘     │  Forge Server                                │
                         │  ├── Pi-local registry:                      │
-                        │  │   /var/flowforge/registries/{project}/    │
+                        │  │   /var/forge/registries/{project}/        │
 ┌─────────────────┐     │  │                                           │
 │  Mac (Laptop)   │◀───▶│  └── Accesses Mac via Tailscale mount       │
 │  Claude Code    │     │      for git operations                      │
-│  .flowforge/    │     └──────────────────────────────────────────────┘
+│  .forge/        │     └──────────────────────────────────────────────┘
 └─────────────────┘
 
-Mac: /Users/Brian/Projects/Active/{project}/.flowforge/registry.json
-Pi:  /var/flowforge/registries/{project}/registry.json
+Mac: /Users/Brian/Projects/Active/{project}/.forge/registry.json
+Pi:  /var/forge/registries/{project}/registry.json
 ```
 
 **Design intent:**
 - Pi stores its own copy for offline access (view/add features when Mac asleep)
-- Mac's `.flowforge/registry.json` is for local Claude Code sessions
+- Mac's `.forge/registry.json` is for local Claude Code sessions
 - Git operations (start/merge) require Mac to be online
 
 ## What's Already Working
@@ -61,11 +61,11 @@ curl -X PATCH "http://raspberrypi:8081/api/AirFit/features/my-feature" \
 
 ### 1. Dual State Sync (CRITICAL)
 
-**Problem:** Pi and Mac registries drift. Today when I created a feature via the API, it was on the Pi but not in the Mac's local `.flowforge/registry.json`. Had to add it twice.
+**Problem:** Pi and Mac registries drift. Today when I created a feature via the API, it was on the Pi but not in the Mac's local `.forge/registry.json`. Had to add it twice.
 
 **Current behavior:**
-- Pi has `/var/flowforge/registries/AirFit/registry.json`
-- Mac has `/Users/Brian/Projects/Active/AirFit/.flowforge/registry.json`
+- Pi has `/var/forge/registries/AirFit/registry.json`
+- Mac has `/Users/Brian/Projects/Active/AirFit/.forge/registry.json`
 - No automatic sync between them
 
 **What's needed:**
@@ -78,7 +78,7 @@ async def sync_registries(project: str, direction: str = "pi-to-mac"):
     Sync registries between Pi and Mac.
 
     direction:
-    - "pi-to-mac": Write Pi's registry to Mac's .flowforge/registry.json
+    - "pi-to-mac": Write Pi's registry to Mac's .forge/registry.json
     - "mac-to-pi": Read Mac's registry and merge into Pi
     - "bidirectional": Merge both, most recent wins per-feature
     """
@@ -94,7 +94,7 @@ Option B: **Pi is always authoritative**
 ```python
 # When Claude Code starts on Mac, it should:
 # 1. Fetch current registry from Pi
-# 2. Write to local .flowforge/registry.json
+# 2. Write to local .forge/registry.json
 # 3. Work locally
 # 4. Push changes back to Pi when done
 
@@ -105,7 +105,7 @@ Option B: **Pi is always authoritative**
 
 **Recommendation:** Option B is cleaner. The local file becomes a cache, Pi is truth.
 
-**Implementation location:** `flowforge/remote.py` or new `flowforge/sync.py`
+**Implementation location:** `forge/remote.py` or new `forge/sync.py`
 
 ---
 
@@ -115,7 +115,7 @@ Option B: **Pi is always authoritative**
 
 **Current DELETE behavior:** (server.py:913)
 - Deletes from registry ✓
-- Does NOT clean up `.flowforge-worktrees/{id}/` directory
+- Does NOT clean up `.forge-worktrees/{id}/` directory
 - Does NOT remove git worktree reference
 
 **Fix needed:**
@@ -128,7 +128,7 @@ def _delete_feature(self, project: str, feature_id: str, force: bool = False):
     # ADD: Cleanup worktree if exists
     project_path = self._get_project_path(project)
     if project_path:
-        worktree_dir = project_path / ".flowforge-worktrees" / feature_id
+        worktree_dir = project_path / ".forge-worktrees" / feature_id
         if worktree_dir.exists():
             # Remove git worktree reference
             subprocess.run(
@@ -140,7 +140,7 @@ def _delete_feature(self, project: str, feature_id: str, force: bool = False):
             shutil.rmtree(worktree_dir, ignore_errors=True)
 
         # Also remove prompt file
-        prompt_file = project_path / ".flowforge" / "prompts" / f"{feature_id}.md"
+        prompt_file = project_path / ".forge" / "prompts" / f"{feature_id}.md"
         prompt_file.unlink(missing_ok=True)
 ```
 
@@ -149,12 +149,12 @@ def _delete_feature(self, project: str, feature_id: str, force: bool = False):
 @app.post("/api/{project}/cleanup")
 async def cleanup_orphans(project: str):
     """Remove worktrees for features that are completed/deleted."""
-    # Scan .flowforge-worktrees/
+    # Scan .forge-worktrees/
     # Compare against registry
     # Remove anything not in active (in-progress/review) features
 ```
 
-**Implementation location:** `flowforge/worktree.py` (already exists)
+**Implementation location:** `forge/worktree.py` (already exists)
 
 ---
 
@@ -199,7 +199,7 @@ async def api_discovery():
 ```python
 # In server.py, ensure these are set:
 app = FastAPI(
-    title="FlowForge API",
+    title="Forge API",
     docs_url="/api/docs",      # Swagger UI at http://raspberrypi:8081/api/docs
     openapi_url="/api/openapi.json"
 )
@@ -231,7 +231,7 @@ curl -X PATCH "http://raspberrypi:8081/api/AirFit/features/test" \
 
 # 3. Worktree cleanup (after implementing)
 curl -X DELETE "http://raspberrypi:8081/api/AirFit/features/old-feature"
-ls /Users/Brian/Projects/Active/AirFit/.flowforge-worktrees/
+ls /Users/Brian/Projects/Active/AirFit/.forge-worktrees/
 # Should NOT contain old-feature
 
 # 4. Cleanup sweep (after implementing)
@@ -248,11 +248,11 @@ curl -X POST "http://raspberrypi:8081/api/AirFit/sync" \
 ## Key Files
 
 ```
-flowforge/
+forge/
 ├── server.py         # FastAPI app, all HTTP endpoints
 ├── mcp_server.py     # MCP tools, core logic like _update_feature, _delete_feature
 ├── registry.py       # Feature/Registry data models
-├── pi_registry.py    # Pi-local storage at /var/flowforge/registries/
+├── pi_registry.py    # Pi-local storage at /var/forge/registries/
 ├── worktree.py       # Git worktree operations
 ├── remote.py         # Mac connectivity via Tailscale
 └── config.py         # Configuration management
@@ -262,10 +262,10 @@ flowforge/
 
 ## For the Claude Agent
 
-When asked to fix FlowForge:
+When asked to fix Forge:
 
 1. **Read this file first** for context
-2. **Read CLAUDE.md** in the FlowForge repo for project conventions
+2. **Read CLAUDE.md** in the Forge repo for project conventions
 3. **SSH to Pi** if needed: The server runs on the Pi at port 8081
 4. **Test changes** by restarting the server and hitting endpoints
 

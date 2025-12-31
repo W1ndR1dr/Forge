@@ -1,0 +1,74 @@
+name: ForgeApp
+options:
+  bundleIdPrefix: com.forge
+  deploymentTarget:
+    macOS: "14.0"
+    iOS: "17.0"
+  defaultConfig: Debug
+  createIntermediateGroups: true
+  groupSortPosition: top
+  generateEmptyDirectories: false
+
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    version: 2.6.0
+
+targets:
+  # macOS App
+  ForgeApp:
+    type: application
+    platform: macOS
+    sources:
+      - App
+      - Models
+      - Views
+      - Services
+      - Shared
+      - Design
+    dependencies:
+      - package: Sparkle
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.forge.app
+        INFOPLIST_FILE: App/Info.plist
+        PRODUCT_NAME: Forge
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        SWIFT_VERSION: "5.9"
+        ENABLE_PREVIEWS: YES
+        DEVELOPMENT_TEAM: "2H43Q8Y3CR"
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+      configs:
+        Debug:
+          SWIFT_OPTIMIZATION_LEVEL: "-Onone"
+        Release:
+          SWIFT_OPTIMIZATION_LEVEL: "-O"
+
+  # iOS App (Companion)
+  ForgeApp-iOS:
+    type: application
+    platform: iOS
+    sources:
+      - App-iOS
+      - Models
+      - Views
+      - Services
+      - Shared
+      - Design
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.forge.app.ios
+        INFOPLIST_FILE: App-iOS/Info.plist
+        PRODUCT_NAME: Forge
+        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+        SWIFT_VERSION: "5.9"
+        ENABLE_PREVIEWS: YES
+        DEVELOPMENT_TEAM: "2H43Q8Y3CR"
+        CODE_SIGN_STYLE: Automatic
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      configs:
+        Debug:
+          SWIFT_OPTIMIZATION_LEVEL: "-Onone"
+        Release:
+          SWIFT_OPTIMIZATION_LEVEL: "-O"

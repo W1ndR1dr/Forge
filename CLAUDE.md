@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-FlowForge is an AI-assisted parallel development orchestrator. It enables systematic, parallel AI-assisted development by managing feature backlogs, generating optimized Claude Code prompts, automating Git worktree workflows, and orchestrating merges.
+Forge is an AI-assisted parallel development orchestrator. It enables systematic, parallel AI-assisted development by managing feature backlogs, generating optimized Claude Code prompts, automating Git worktree workflows, and orchestrating merges.
 
-**Philosophy**: Built for "vibecoders" - developers who work extensively with AI assistance but may not be Git experts. FlowForge handles the complexity so users can focus on features.
+**Philosophy**: Built for "vibecoders" - developers who work extensively with AI assistance but may not be Git experts. Forge handles the complexity so users can focus on features.
 
 ## Terminology
 
-These terms have specific meanings in FlowForge:
+These terms have specific meanings in Forge:
 
 | Term | Meaning |
 |------|---------|
@@ -44,25 +44,25 @@ forge start feature-id
 forge-server
 
 # Server environment variables:
-FLOWFORGE_PROJECTS_PATH=/Users/Brian/Projects/Active  # Where to find projects
-FLOWFORGE_MAC_HOST=macs-tailscale-hostname            # For Pi→Mac SSH
-FLOWFORGE_MAC_USER=Brian                               # Mac username
-FLOWFORGE_PORT=8081                                    # Server port
-FLOWFORGE_HOST=0.0.0.0                                 # Bind address
+FORGE_PROJECTS_PATH=/Users/Brian/Projects/Active  # Where to find projects
+FORGE_MAC_HOST=macs-tailscale-hostname            # For Pi→Mac SSH
+FORGE_MAC_USER=Brian                               # Mac username
+FORGE_PORT=8081                                    # Server port
+FORGE_HOST=0.0.0.0                                 # Bind address
 ```
 
 ## Architecture
 
 ```
-flowforge/
+forge/
 ├── cli.py                # Typer CLI commands (main entry point)
-├── config.py             # Project configuration (FlowForgeConfig, ProjectConfig)
+├── config.py             # Project configuration (ForgeConfig, ProjectConfig)
 ├── registry.py           # Feature registry (Feature dataclass, CRUD, hierarchy)
 ├── worktree.py           # Git worktree management (WorktreeManager, ClaudeCodeLauncher)
 ├── intelligence.py       # Tiered AI intelligence (expert suggestion, research detection)
 ├── prompt_builder.py     # Implementation prompt generation
 ├── merge.py              # Merge orchestration (MergeOrchestrator, conflict detection)
-├── mcp_server.py         # Remote MCP server for Claude Code (FlowForgeMCPServer)
+├── mcp_server.py         # Remote MCP server for Claude Code (ForgeMCPServer)
 ├── server.py             # FastAPI wrapper (MCP + REST + Web UI at /)
 └── remote.py             # SSH execution for Pi→Mac remote worktree creation
 ```
@@ -73,7 +73,7 @@ flowforge/
 2. **Start Feature** (`forge start`): Creates worktree → generates prompt with expert suggestions → copies to clipboard
 3. **Merge Feature** (`forge merge`): Conflict check (dry-run) → merge → validation (build command) → cleanup
 
-### Per-Project Data (`.flowforge/`)
+### Per-Project Data (`.forge/`)
 
 - `config.json` - Project settings (main branch, build command, claude command)
 - `registry.json` - Feature database (all Feature objects)
@@ -82,7 +82,7 @@ flowforge/
 
 ### Pi Server Architecture
 
-The FlowForge server **always runs on Raspberry Pi 5** (via Tailscale):
+The Forge server **always runs on Raspberry Pi 5** (via Tailscale):
 
 ```
 iPhone/Mac App → Tailscale → Pi Server → SSH → Mac (git/worktrees)
@@ -99,9 +99,9 @@ iPhone/Mac App → Tailscale → Pi Server → SSH → Mac (git/worktrees)
 
 **Key environment variables on Pi:**
 ```bash
-FLOWFORGE_PROJECTS_PATH=/Users/Brian/Projects/Active  # Mac paths!
-FLOWFORGE_MAC_HOST=brians-macbook-pro                 # Tailscale hostname
-FLOWFORGE_MAC_USER=Brian
+FORGE_PROJECTS_PATH=/Users/Brian/Projects/Active  # Mac paths!
+FORGE_MAC_HOST=brians-macbook-pro                 # Tailscale hostname
+FORGE_MAC_USER=Brian
 ```
 
 The CLI (`forge` command) only works directly on Mac - it's not wrapped for remote use.
@@ -110,7 +110,7 @@ The CLI (`forge` command) only works directly on Mac - it's not wrapped for remo
 
 ```bash
 # Project Setup
-forge init                           # Initialize FlowForge
+forge init                           # Initialize Forge
 forge init --from-roadmap "docs/"    # Import features from markdown files
 
 # Feature Management
@@ -118,7 +118,7 @@ forge add "Feature Title"            # Add feature (interactive)
 forge list                           # Tree view of features
 forge show <id>                      # Feature details
 
-# Parallel Development (creates worktrees in .flowforge-worktrees/)
+# Parallel Development (creates worktrees in .forge-worktrees/)
 forge start <id>                     # Create worktree + generate prompt
 forge start <id> --deep-research     # Force deep research mode
 forge start <id> --skip-experts      # Skip expert suggestion phase
@@ -186,7 +186,7 @@ forge merge test-feature
 ## Key Design Decisions
 
 ### Tiered Intelligence System
-Instead of hardcoded personas, FlowForge uses AI to dynamically:
+Instead of hardcoded personas, Forge uses AI to dynamically:
 1. **Tier 1**: Suggest relevant domain experts for any feature
 2. **Tier 2**: Detect when deep research is warranted, open research threads
 3. **Tier 3**: Research across multiple AI providers for critical decisions
@@ -195,19 +195,19 @@ Instead of hardcoded personas, FlowForge uses AI to dynamically:
 Each feature gets its own worktree, enabling multiple Claude Code sessions simultaneously:
 ```
 project/
-├── .flowforge-worktrees/
+├── .forge-worktrees/
 │   ├── feature-a/          # Claude Code session 1
 │   ├── feature-b/          # Claude Code session 2
 │   └── feature-c/          # Claude Code session 3
 ```
 
 ### MCP Server for Remote Access
-The MCP server enables Claude Code on iOS/web to natively call FlowForge tools via Tailscale:
+The MCP server enables Claude Code on iOS/web to natively call Forge tools via Tailscale:
 - Configure `http://pi.tailnet:8081` as MCP server
 - Use natural language: "Start the zone2-tracking feature on AirFit"
-- Claude calls `flowforge_start_feature("AirFit", "zone2-tracking")` automatically
+- Claude calls `forge_start_feature("AirFit", "zone2-tracking")` automatically
 
-**Available MCP tools**: `flowforge_list_projects`, `flowforge_list_features`, `flowforge_status`, `flowforge_start_feature`, `flowforge_stop_feature`, `flowforge_merge_check`, `flowforge_merge`, `flowforge_add_feature`
+**Available MCP tools**: `forge_list_projects`, `forge_list_features`, `forge_status`, `forge_start_feature`, `forge_stop_feature`, `forge_merge_check`, `forge_merge`, `forge_add_feature`
 
 ## Commit Conventions
 
@@ -217,13 +217,13 @@ fix(worktree): Handle existing branch case
 refactor(registry): Simplify dependency tracking
 ```
 
-## macOS App (FlowForgeApp)
+## macOS App (ForgeApp)
 
-The SwiftUI macOS app lives in `FlowForgeApp/`. Uses XcodeGen to manage the Xcode project.
+The SwiftUI macOS app lives in `ForgeApp/`. Uses XcodeGen to manage the Xcode project.
 
 ### Server (Pi-Only Architecture)
 
-The FlowForge server **always runs on the Raspberry Pi**, not locally on Mac. The Mac/iOS apps connect via Tailscale.
+The Forge server **always runs on the Raspberry Pi**, not locally on Mac. The Mac/iOS apps connect via Tailscale.
 
 ```
 iPhone/Mac App → Tailscale → Pi Server (port 8081) → SSH → Mac (git/worktrees)
@@ -232,13 +232,13 @@ iPhone/Mac App → Tailscale → Pi Server (port 8081) → SSH → Mac (git/work
 **Server management:**
 ```bash
 # Check server status
-ssh brian@raspberrypi "sudo systemctl status flowforge"
+ssh brian@raspberrypi "sudo systemctl status forge"
 
 # View logs
-ssh brian@raspberrypi "sudo journalctl -u flowforge -f"
+ssh brian@raspberrypi "sudo journalctl -u forge -f"
 
 # Restart server
-ssh brian@raspberrypi "sudo systemctl restart flowforge"
+ssh brian@raspberrypi "sudo systemctl restart forge"
 ```
 
 The apps connect to `http://raspberrypi:8081` (configured in `PlatformConfig.swift`).
@@ -261,7 +261,7 @@ This is the **primary deploy command**. It automatically:
 ### Manual Build (for quick macOS-only iteration)
 
 ```bash
-cd /Users/Brian/Projects/Active/FlowForge/FlowForgeApp && xcodegen generate && xcodebuild -project FlowForgeApp.xcodeproj -scheme FlowForgeApp -configuration Release -derivedDataPath build ONLY_ACTIVE_ARCH=YES -quiet && rm -rf /Applications/FlowForge.app && cp -R build/Build/Products/Release/FlowForge.app /Applications/ && open /Applications/FlowForge.app
+cd /Users/Brian/Projects/Active/Forge/ForgeApp && xcodegen generate && xcodebuild -project ForgeApp.xcodeproj -scheme ForgeApp -configuration Release -derivedDataPath build ONLY_ACTIVE_ARCH=YES -quiet && rm -rf /Applications/Forge.app && cp -R build/Build/Products/Release/Forge.app /Applications/ && open /Applications/Forge.app
 ```
 
 Note: This skips iOS TestFlight. Use `./scripts/ship.sh` for full deployment.
@@ -281,7 +281,7 @@ Then run `xcodegen generate` before building.
 ### Project Structure
 
 ```
-FlowForgeApp/
+ForgeApp/
 ├── project.yml              # XcodeGen config (defines targets, settings)
 ├── App/                     # macOS entry point
 ├── App-iOS/                 # iOS companion app entry point
@@ -317,7 +317,7 @@ Archives, exports, and uploads to TestFlight. `--auto` uses Claude to analyze co
 
 **Prerequisites:**
 - Credentials in `~/.appstore/credentials` (shared with AirFit)
-- App exists in App Store Connect (bundle ID: `com.flowforge.app.ios`)
+- App exists in App Store Connect (bundle ID: `com.forge.app.ios`)
 
 ### TestFlight Release Workflow
 
@@ -341,7 +341,7 @@ When the user says **"push to TestFlight"**, **"deploy iOS"**, or similar:
 ```
 
 This script:
-1. Generates Sparkle EdDSA keys (first run only, saved to `~/.flowforge-keys/`)
+1. Generates Sparkle EdDSA keys (first run only, saved to `~/.forge-keys/`)
 2. Builds Release archive
 3. Signs with Sparkle
 4. Updates `appcast.xml`
@@ -352,7 +352,7 @@ This script:
 git add appcast.xml
 git commit -m "Release v1.x.x"
 git push
-gh release create v1.x.x releases/FlowForge-1.x.x.zip --title "FlowForge 1.x.x"
+gh release create v1.x.x releases/Forge-1.x.x.zip --title "Forge 1.x.x"
 ```
 
 The macOS app checks `appcast.xml` on GitHub for updates and auto-installs new versions.
