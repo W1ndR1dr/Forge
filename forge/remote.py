@@ -118,9 +118,9 @@ class RemoteExecutor:
             # Add the actual command
             remote_cmd_parts.append(" ".join(shlex.quote(arg) for arg in command))
 
-            # Combine with && and wrap in bash -c
+            # Combine with && and wrap in bash -l -c (login shell to get PATH)
             inner_cmd = " && ".join(remote_cmd_parts)
-            remote_cmd = f"bash -c {shlex.quote(inner_cmd)}"
+            remote_cmd = f"bash -l -c {shlex.quote(inner_cmd)}"
 
         # Build full SSH command
         ssh_cmd = self._build_ssh_command()
