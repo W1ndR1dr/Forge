@@ -48,12 +48,11 @@ HOW IT WORKS:
 - [Specific behavior 2]
 - [Edge case handling]
 
-FILES LIKELY AFFECTED:
-[Best guess at which files need changes]
-
-ESTIMATED SCOPE:
-[Small (< 1 hour) / Medium (1-3 hours) / Large (3+ hours)]
+COMPLEXITY:
+[Trivial / Small / Medium / Large]
 ```
+
+Note: Don't ask about implementation details like which files to change - that's for the implementation phase. Focus on **what** and **why**, not **how**.
 
 ## Conversation Style
 
@@ -104,12 +103,11 @@ HOW IT WORKS:
 - [Specific behavior 2]
 - [Edge case handling]
 
-FILES LIKELY AFFECTED:
-[Best guess at which files need changes - helps with parallel safety]
-
-ESTIMATED SCOPE:
-[Small (< 1 hour) / Medium (1-3 hours) / Large (3+ hours)]
+COMPLEXITY:
+[Trivial / Small / Medium / Large]
 ```
+
+Note: Don't ask about implementation details like which files to change - that's for the implementation phase. Focus on **what** and **why**, not **how**.
 
 ## Conversation Style
 

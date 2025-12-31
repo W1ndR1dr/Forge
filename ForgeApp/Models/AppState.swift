@@ -917,8 +917,7 @@ class AppState {
         title: String,
         description: String,
         howItWorks: [String],
-        filesAffected: [String],
-        estimatedScope: String
+        complexity: String
     ) async {
         guard let project = selectedProject else { return }
 
@@ -929,8 +928,7 @@ class AppState {
                 title: title,
                 description: description,
                 howItWorks: howItWorks,
-                filesAffected: filesAffected,
-                estimatedScope: estimatedScope
+                complexity: complexity
             )
 
             // Update local state

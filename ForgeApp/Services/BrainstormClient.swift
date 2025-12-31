@@ -34,16 +34,14 @@ final class BrainstormClient: ObservableObject {
         let title: String
         let whatItDoes: String
         let howItWorks: [String]
-        let filesAffected: [String]
-        let estimatedScope: String
+        let complexity: String  // Trivial / Small / Medium / Large
         let rawSpec: String
 
         enum CodingKeys: String, CodingKey {
             case title
             case whatItDoes = "what_it_does"
             case howItWorks = "how_it_works"
-            case filesAffected = "files_affected"
-            case estimatedScope = "estimated_scope"
+            case complexity
             case rawSpec = "raw_spec"
         }
     }

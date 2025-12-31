@@ -7,24 +7,24 @@
         <language>en</language>
 
         <item>
-            <title>Forge 1.7.0</title>
+            <title>Forge 1.8.0</title>
             <description><![CDATA[
-                <h2>What's New in 1.7.0</h2>
+                <h2>What's New in 1.8.0</h2>
                 <ul>
-                    <li>✨ Beautiful Linear-inspired design refresh with midnight theme</li>
-                    <li>Silky smooth animations that feel just right (150ms hover, 120ms press)</li>
-                    <li>Refined typography with Inter font for better readability</li>
-                    <li>Polished buttons and inputs with subtle hover effects</li>
+                    <li>Refined prompts for better AI-assisted development flow</li>
+                    <li>Softer, more subtle UI colors for improved focus</li>
+                    <li>Dark mode icon and better project visibility settings</li>
+                    <li>Cleaner interface with reduced visual noise</li>
                 </ul>
             ]]></description>
-            <pubDate>Tue, 30 Dec 2025 17:39:12 -0800</pubDate>
+            <pubDate>Tue, 30 Dec 2025 19:51:30 -0800</pubDate>
             <sparkle:version>1</sparkle:version>
-            <sparkle:shortVersionString>1.7.0</sparkle:shortVersionString>
+            <sparkle:shortVersionString>1.8.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <enclosure
-                url="https://github.com/W1ndR1dr/Forge/releases/download/v1.7.0/Forge-1.7.0.zip"
-                sparkle:edSignature="pOPN5wNGD8AAsNDt02G6Bfp19nmtvwNklSfQX1hUxYB0o6kJfCh8PslnBSDqrDsqVsm+YdsrLlxW2JeFjEY+Ag=="
-                length="2589403"
+                url="https://github.com/W1ndR1dr/Forge/releases/download/v1.8.0/Forge-1.8.0.zip"
+                sparkle:edSignature="knB8Hyc4zNqYhLNRPAsi+WlfTtgIVtM0SrjWlKSy0W/EwoSg1fMM+3eFZVkebr3eZmEd+b99EGYjsCuGsfddBQ=="
+                length="2388637"
                 type="application/octet-stream"/>
         </item>
 

@@ -40,8 +40,7 @@ class SpecResult:
     title: str
     what_it_does: str
     how_it_works: list[str]
-    files_affected: list[str]
-    estimated_scope: str
+    complexity: str  # Trivial / Small / Medium / Large (no time estimates)
     raw_spec: str
 
     def to_dict(self) -> dict:
@@ -49,8 +48,7 @@ class SpecResult:
             "title": self.title,
             "what_it_does": self.what_it_does,
             "how_it_works": self.how_it_works,
-            "files_affected": self.files_affected,
-            "estimated_scope": self.estimated_scope,
+            "complexity": self.complexity,
             "raw_spec": self.raw_spec,
         }
 
@@ -421,28 +419,23 @@ class BrainstormAgent:
                 what_it_does = what_match.group(1).strip()
 
             how_it_works = []
-            how_match = re.search(r"HOW IT WORKS:\s*\n(.+?)(?=\n\n|\nFILES|$)", spec_text, re.DOTALL)
+            # Match HOW IT WORKS until COMPLEXITY or end
+            how_match = re.search(r"HOW IT WORKS:\s*\n(.+?)(?=\n\n|\nCOMPLEXITY|$)", spec_text, re.DOTALL)
             if how_match:
                 how_text = how_match.group(1)
                 how_it_works = [line.strip().lstrip("- ") for line in how_text.split("\n") if line.strip()]
 
-            files_affected = []
-            files_match = re.search(r"FILES LIKELY AFFECTED:\s*\n(.+?)(?=\n\n|\nESTIMATED|$)", spec_text, re.DOTALL)
-            if files_match:
-                files_text = files_match.group(1)
-                files_affected = [line.strip().lstrip("- ") for line in files_text.split("\n") if line.strip()]
-
-            estimated_scope = "Medium"
-            scope_match = re.search(r"ESTIMATED SCOPE:\s*(.+?)(?:\n|$)", spec_text)
-            if scope_match:
-                estimated_scope = scope_match.group(1).strip()
+            # Parse complexity (new format) - defaults to Medium
+            complexity = "Medium"
+            complexity_match = re.search(r"COMPLEXITY:\s*(.+?)(?:\n|$)", spec_text)
+            if complexity_match:
+                complexity = complexity_match.group(1).strip()
 
             return SpecResult(
                 title=title,
                 what_it_does=what_it_does,
                 how_it_works=how_it_works,
-                files_affected=files_affected,
-                estimated_scope=estimated_scope,
+                complexity=complexity,
                 raw_spec=spec_text,
             )
         except Exception:

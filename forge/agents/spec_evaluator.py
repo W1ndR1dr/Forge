@@ -223,13 +223,8 @@ HOW IT WORKS:
 - Immediately applies theme without restart
 - Respects system setting by default, can override
 
-FILES LIKELY AFFECTED:
-- SettingsView.swift
-- AppTheme.swift (new)
-- ContentView.swift
-
-ESTIMATED SCOPE:
-Medium (1-3 hours)
+COMPLEXITY:
+Small
 """
 
     evaluator = SpecEvaluator()

@@ -961,8 +961,10 @@ class UpdateFeatureSpecRequest(BaseModel):
     title: str
     description: str
     how_it_works: list[str] = []
-    files_affected: list[str] = []
-    estimated_scope: str = "Medium"
+    complexity: str = "Medium"  # Trivial / Small / Medium / Large
+    # Deprecated fields (kept for backward compatibility, ignored)
+    files_affected: list[str] = []  # No longer used - let implementation Claude discover
+    estimated_scope: str = ""  # Replaced by complexity
 
 
 @app.patch("/api/{project}/features/{feature_id}/spec")
@@ -999,10 +1001,9 @@ async def update_feature_spec(
     full_description = request.description
     if request.how_it_works:
         full_description += "\n\nHow it works:\n" + "\n".join(f"- {item}" for item in request.how_it_works)
-    if request.files_affected:
-        full_description += "\n\nFiles likely affected:\n" + "\n".join(f"- {f}" for f in request.files_affected)
-    if request.estimated_scope:
-        full_description += f"\n\nEstimated scope: {request.estimated_scope}"
+    if request.complexity:
+        full_description += f"\n\nComplexity: {request.complexity}"
+    # Note: files_affected intentionally not included - let implementation Claude discover
 
     # Build updates
     updates = {

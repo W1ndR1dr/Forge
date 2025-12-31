@@ -189,8 +189,7 @@ actor APIClient {
         title: String,
         description: String,
         howItWorks: [String],
-        filesAffected: [String],
-        estimatedScope: String
+        complexity: String
     ) async throws {
         let url = baseURL.appendingPathComponent("api/\(project)/features/\(featureId)/spec")
 
@@ -198,8 +197,7 @@ actor APIClient {
             "title": title,
             "description": description,
             "how_it_works": howItWorks,
-            "files_affected": filesAffected,
-            "estimated_scope": estimatedScope,
+            "complexity": complexity,
         ]
 
         let _: EmptyResponse = try await patch(url: url, body: body)

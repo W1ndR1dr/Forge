@@ -537,26 +537,12 @@ struct SpecPreviewSheet: View {
                         }
                     }
 
-                    // Files affected
-                    if !spec.filesAffected.isEmpty {
-                        VStack(alignment: .leading, spacing: Spacing.small) {
-                            Text("Files likely affected")
-                                .sectionHeaderStyle()
-
-                            ForEach(spec.filesAffected, id: \.self) { file in
-                                Text(file)
-                                    .font(.system(.body, design: .monospaced))
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                    }
-
-                    // Scope
+                    // Complexity
                     HStack {
-                        Text("Estimated scope:")
+                        Text("Complexity:")
                             .font(Typography.caption)
                             .foregroundColor(.secondary)
-                        Text(spec.estimatedScope)
+                        Text(spec.complexity)
                             .font(Typography.caption)
                             .fontWeight(.semibold)
                     }
@@ -614,8 +600,7 @@ struct SpecPreviewSheet: View {
                     title: spec.title,
                     description: spec.whatItDoes,
                     howItWorks: spec.howItWorks,
-                    filesAffected: spec.filesAffected,
-                    estimatedScope: spec.estimatedScope
+                    complexity: spec.complexity
                 )
             } else {
                 // CREATE new feature from spec

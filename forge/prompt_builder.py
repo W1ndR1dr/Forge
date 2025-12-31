@@ -56,22 +56,25 @@ class PromptBuilder:
         full_path = self.project_root / claude_md_path
 
         if not full_path.exists():
-            return "# No CLAUDE.md found\n\nFollow standard coding conventions."
+            return ""  # No filler text - just skip section if no CLAUDE.md
 
         content = full_path.read_text()
 
-        # Extract the most relevant sections for implementation
-        # Keep: Overview, Architecture, Coding Style, Key Files, Common Patterns
-        # Trim: Long data dumps, debugging endpoints, environment variables
-
+        # Extract sections useful for implementation and DevOps hygiene
+        # Prioritized: context that helps Claude implement correctly
+        # Note: (?=\n## |\Z) stops at next H2 section, not H3 subsections
         sections_to_keep = [
-            r"## Project Overview.*?(?=##|\Z)",
-            r"## Design Philosophy.*?(?=##|\Z)",
-            r"## Architecture.*?(?=##|\Z)",
-            r"## Coding Style.*?(?=##|\Z)",
-            r"## Key Files.*?(?=##|\Z)",
-            r"## Common Patterns.*?(?=##|\Z)",
-            r"## Build Commands.*?(?=##|\Z)",
+            r"## Project Overview.*?(?=\n## |\Z)",
+            r"## Terminology.*?(?=\n## |\Z)",          # Domain understanding
+            r"## Architecture.*?(?=\n## |\Z)",
+            r"## Coding Style.*?(?=\n## |\Z)",
+            r"## Build Commands.*?(?=\n## |\Z)",
+            r"## Testing.*?(?=\n## |\Z)",              # Code hygiene
+            r"## Key Design Decisions.*?(?=\n## |\Z)", # Architectural context
+            r"## Commit Conventions.*?(?=\n## |\Z)",   # DevOps hygiene
+            r"## CLI Commands.*?(?=\n## |\Z)",         # Tool usage
+            r"## Key Patterns.*?(?=\n## |\Z)",         # Implementation patterns
+            r"## Common Patterns.*?(?=\n## |\Z)",      # Alternative naming
         ]
 
         extracted = []
@@ -83,9 +86,10 @@ class PromptBuilder:
         if extracted:
             return "\n\n".join(extracted)
 
-        # If no sections matched, return trimmed version (first 3000 chars)
-        if len(content) > 3000:
-            return content[:3000] + "\n\n... (truncated for brevity)"
+        # If no sections matched, return trimmed version (first 5000 chars)
+        # Increased from 3000 to give more context when sections don't match
+        if len(content) > 5000:
+            return content[:5000] + "\n\n... (truncated for brevity)"
 
         return content
 
@@ -271,10 +275,11 @@ class PromptBuilder:
             sections.append(context.project_context)
             sections.append("")
 
-        # CLAUDE.md content
-        sections.append("## Project Context")
-        sections.append(context.claude_md_content)
-        sections.append("")
+        # CLAUDE.md content (only if available)
+        if context.claude_md_content:
+            sections.append("## Project Context")
+            sections.append(context.claude_md_content)
+            sections.append("")
 
         # Implementation instructions (AGI-pilled)
         sections.append("## Instructions")
