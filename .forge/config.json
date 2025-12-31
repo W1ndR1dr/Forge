@@ -1,12 +1,12 @@
 {
   "version": "1.0.0",
   "project": {
-    "name": "FlowForge",
+    "name": "Forge",
     "main_branch": "main",
     "claude_md_path": "CLAUDE.md",
     "build_command": "pip install -e . && python -m pytest",
     "test_command": null,
-    "worktree_base": ".flowforge-worktrees",
+    "worktree_base": ".forge-worktrees",
     "default_persona": null,
     "claude_command": "claude",
     "claude_flags": [
