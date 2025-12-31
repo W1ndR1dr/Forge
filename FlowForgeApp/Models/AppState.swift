@@ -233,12 +233,12 @@ class AppState {
 
     /// Visible projects (excludes hidden) sorted according to current preference
     var visibleSortedProjects: [Project] {
-        sortedProjects.filter { !hiddenProjectIds.contains($0.id.uuidString) }
+        sortedProjects.filter { !hiddenProjectIds.contains($0.path) }
     }
 
     /// Hidden projects sorted according to current preference
     var hiddenProjects: [Project] {
-        sortedProjects.filter { hiddenProjectIds.contains($0.id.uuidString) }
+        sortedProjects.filter { hiddenProjectIds.contains($0.path) }
     }
 
     /// Inbox items (raw captures) sorted according to current preference
@@ -384,12 +384,12 @@ class AppState {
 
     /// Hide a project from the sidebar
     func hideProject(_ project: Project) {
-        hiddenProjectIds.insert(project.id.uuidString)
+        hiddenProjectIds.insert(project.path)  // Use path (stable) not UUID (regenerated on launch)
     }
 
     /// Show a hidden project in the sidebar
     func showProject(_ project: Project) {
-        hiddenProjectIds.remove(project.id.uuidString)
+        hiddenProjectIds.remove(project.path)
     }
 
     func loadProjects() async {

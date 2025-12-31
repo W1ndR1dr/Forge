@@ -311,19 +311,19 @@ enum Timing {
 
 enum Linear {
     // MARK: - Backgrounds (darkest to lightest)
-    // Linear uses warm undertones in their near-black backgrounds
+    // Softened dark greys - easier on the eyes, less harsh contrast
 
-    /// Base window background - Linear's primary dark (#0F0F10)
-    static let background = Color(red: 0.059, green: 0.059, blue: 0.063)
+    /// Base window background - softened dark grey (#191919)
+    static let background = Color(red: 0.098, green: 0.098, blue: 0.098)
 
-    /// Elevated surface - cards, panels (#151516)
-    static let surface = Color(red: 0.082, green: 0.082, blue: 0.086)
+    /// Elevated surface - cards, panels (#1E1E1E)
+    static let surface = Color(red: 0.118, green: 0.118, blue: 0.118)
 
-    /// Floating surface - dropdowns, popovers (#1A1A1C)
-    static let surfaceElevated = Color(hex: "1A1A1C")
+    /// Floating surface - dropdowns, popovers (#242424)
+    static let surfaceElevated = Color(hex: "242424")
 
-    /// Modal surface - dialogs, command palette (#1E1E20)
-    static let surfaceModal = Color(hex: "1E1E20")
+    /// Modal surface - dialogs, command palette (#282828)
+    static let surfaceModal = Color(hex: "282828")
 
     // MARK: - Interactive States (opacity-based, not solid colors)
 
@@ -347,19 +347,19 @@ enum Linear {
     /// Focus state border - uses accent color
     static let borderFocus = Color(hex: "5E6AD2").opacity(0.5)
 
-    // MARK: - Text Hierarchy (exact Linear values)
+    // MARK: - Text Hierarchy (softened for reduced contrast)
 
-    /// Primary text - headings, important content (#EEEFF1)
-    static let textPrimary = Color(red: 0.933, green: 0.937, blue: 0.945)
+    /// Primary text - headings, important content (#E0E0E0 - softened from pure white)
+    static let textPrimary = Color(red: 0.878, green: 0.878, blue: 0.878)
 
-    /// Secondary text - descriptions, body (#95A2B3)
-    static let textSecondary = Color(red: 0.584, green: 0.635, blue: 0.702)
+    /// Secondary text - descriptions, body (#9CA3AF)
+    static let textSecondary = Color(red: 0.612, green: 0.639, blue: 0.686)
 
     /// Tertiary text - metadata, hints (#6B7280)
     static let textTertiary = Color(hex: "6B7280")
 
-    /// Muted text - disabled, placeholders (#4B5563)
-    static let textMuted = Color(hex: "4B5563")
+    /// Muted text - disabled, placeholders (#52525B)
+    static let textMuted = Color(hex: "52525B")
 
     // MARK: - Accent Colors (Linear's signature indigo)
 
@@ -374,17 +374,17 @@ enum Linear {
 
     // MARK: - Semantic Colors (muted, desaturated for dark theme)
 
-    /// Success - muted green (#4DA673)
-    static let success = Color(hex: "4DA673")
+    /// Success - muted green (#4DA673) at 85% opacity for softer appearance
+    static let success = Color(hex: "4DA673").opacity(0.85)
 
-    /// Warning - warm amber (#EAA94B)
-    static let warning = Color(hex: "EAA94B")
+    /// Warning - warm amber (#EAA94B) at 85% opacity
+    static let warning = Color(hex: "EAA94B").opacity(0.85)
 
-    /// Error - soft red (#D25E65)
-    static let error = Color(hex: "D25E65")
+    /// Error - soft red (#D25E65) at 85% opacity
+    static let error = Color(hex: "D25E65").opacity(0.85)
 
     /// Info - soft blue (same as accent)
-    static let info = Color(hex: "5E6AD2")
+    static let info = Color(hex: "5E6AD2").opacity(0.85)
 
     // MARK: - Legacy Aliases (for migration)
     // TODO: Remove these after updating all views

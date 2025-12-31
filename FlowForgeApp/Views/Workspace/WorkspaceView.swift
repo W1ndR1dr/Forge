@@ -1160,6 +1160,8 @@ struct IdeaFeatureCard: View {
             }
         }
         .padding(Spacing.medium)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())  // Full row hover area
         .background(isHovered ? Linear.hover : Color.clear)
         .cornerRadius(CornerRadius.medium)
         .confirmationDialog(
@@ -1303,6 +1305,8 @@ struct InboxCard: View {
             }
         }
         .padding(Spacing.medium)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())  // Full row hover area
         .background(isHovered ? Linear.hover : Color.clear)
         .cornerRadius(CornerRadius.medium)
         .onHover { isHovered = $0 }
