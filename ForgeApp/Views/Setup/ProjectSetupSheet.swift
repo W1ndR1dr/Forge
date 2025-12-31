@@ -190,7 +190,7 @@ struct ProjectSetupSheet: View {
                 .sectionHeaderStyle()
 
             VStack(alignment: .leading, spacing: Spacing.small) {
-                fileItem(".flowforge/", "Forge configuration directory")
+                fileItem(".forge/", "Forge configuration directory")
                 fileItem("config.json", "Project settings")
                 fileItem("registry.json", "Feature database")
                 fileItem("project-context.md", "AI context for prompts")

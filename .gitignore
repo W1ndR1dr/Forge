@@ -21,8 +21,8 @@ build/
 *.swp
 *.swo
 
-# FlowForge
-.flowforge-worktrees/
+# Forge
+.forge-worktrees/
 
 # Xcode
 *.xcodeproj/
@@ -33,5 +33,5 @@ DerivedData/
 *.mode2v3
 *.perspectivev3
 xcuserdata/
-FlowForgeApp/build/
+ForgeApp/build/
 releases/

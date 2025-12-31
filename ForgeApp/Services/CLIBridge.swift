@@ -58,7 +58,7 @@ actor CLIBridge {
     // MARK: - Local Feature Operations (no CLI needed)
 
     func addFeature(title: String, projectPath: String) async throws {
-        let registryPath = "\(projectPath)/.flowforge/registry.json"
+        let registryPath = "\(projectPath)/.forge/registry.json"
         let data = try Data(contentsOf: URL(fileURLWithPath: registryPath))
         let decoder = JSONDecoder()
         var registry = try decoder.decode(FeatureRegistry.self, from: data)
@@ -114,7 +114,7 @@ actor CLIBridge {
 
     func updateFeatureStatus(featureId: String, status: FeatureStatus, projectPath: String) async throws {
         // Read the registry
-        let registryPath = "\(projectPath)/.flowforge/registry.json"
+        let registryPath = "\(projectPath)/.forge/registry.json"
         let data = try Data(contentsOf: URL(fileURLWithPath: registryPath))
         let decoder = JSONDecoder()
         var registry = try decoder.decode(FeatureRegistry.self, from: data)
@@ -149,7 +149,7 @@ actor CLIBridge {
 
     func deleteFeature(featureId: String, projectPath: String) async throws {
         // Read the registry
-        let registryPath = "\(projectPath)/.flowforge/registry.json"
+        let registryPath = "\(projectPath)/.forge/registry.json"
         let data = try Data(contentsOf: URL(fileURLWithPath: registryPath))
         let decoder = JSONDecoder()
         var registry = try decoder.decode(FeatureRegistry.self, from: data)

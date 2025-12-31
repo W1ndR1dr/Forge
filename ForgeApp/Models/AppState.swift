@@ -460,38 +460,38 @@ class AppState {
                     continue
                 }
 
-                let flowforgeDir = url.appendingPathComponent(".flowforge")
+                let forgeDir = url.appendingPathComponent(".forge")
                 let gitDir = url.appendingPathComponent(".git")
 
-                var isFlowforgeDir: ObjCBool = false
+                var isForgeDir: ObjCBool = false
                 var isGitDir: ObjCBool = false
 
-                let hasFlowforge = FileManager.default.fileExists(
-                    atPath: flowforgeDir.path,
-                    isDirectory: &isFlowforgeDir
-                ) && isFlowforgeDir.boolValue
+                let hasForge = FileManager.default.fileExists(
+                    atPath: forgeDir.path,
+                    isDirectory: &isForgeDir
+                ) && isForgeDir.boolValue
 
                 let hasGit = FileManager.default.fileExists(
                     atPath: gitDir.path,
                     isDirectory: &isGitDir
                 ) && isGitDir.boolValue
 
-                // Must have .flowforge OR (.git + looks like a real project)
-                let looksLikeProject = hasFlowforge || (hasGit && Self.looksLikeRealProject(url))
+                // Must have .forge OR (.git + looks like a real project)
+                let looksLikeProject = hasForge || (hasGit && Self.looksLikeRealProject(url))
 
                 if looksLikeProject {
                     let resolvedPath = url.standardizedFileURL.path
                     if !seenPaths.contains(resolvedPath) {
                         seenPaths.insert(resolvedPath)
 
-                        let status: ProjectInitializationStatus = hasFlowforge
+                        let status: ProjectInitializationStatus = hasForge
                             ? .initialized
                             : .uninitialized
 
                         let project = Project(
                             name: url.lastPathComponent,
                             path: resolvedPath,
-                            isActive: hasFlowforge,
+                            isActive: hasForge,
                             initializationStatus: status
                         )
                         discoveredProjects.append(project)
@@ -1162,7 +1162,7 @@ enum ForgeError: LocalizedError {
 /// Simple feature cache for offline browsing on iOS
 class FeatureCache {
     private let defaults = UserDefaults.standard
-    private let cachePrefix = "flowforge.features."
+    private let cachePrefix = "forge.features."
 
     /// Save features to cache for a project
     func save(_ features: [Feature], for projectName: String) {

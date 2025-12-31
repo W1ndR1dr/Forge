@@ -125,7 +125,7 @@ struct ConnectionSettingsTab: View {
             VStack(alignment: .leading, spacing: Spacing.large) {
                 // Server section
                 VStack(alignment: .leading, spacing: Spacing.medium) {
-                    Text("FLOWFORGE SERVER")
+                    Text("FORGE SERVER")
                         .sectionHeaderStyle()
 
                     VStack(alignment: .leading, spacing: Spacing.small) {
