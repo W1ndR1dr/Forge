@@ -9,6 +9,7 @@ struct StreakBadge: View {
     let longestStreak: Int
     let totalShipped: Int
     let showDetails: Bool
+    let compact: Bool
 
     @State private var displayedStreak: Int = 0
     @State private var didJustIncrement = false
@@ -17,15 +18,51 @@ struct StreakBadge: View {
         currentStreak: Int,
         longestStreak: Int = 0,
         totalShipped: Int = 0,
-        showDetails: Bool = true
+        showDetails: Bool = true,
+        compact: Bool = false
     ) {
         self.currentStreak = currentStreak
         self.longestStreak = longestStreak
         self.totalShipped = totalShipped
         self.showDetails = showDetails
+        self.compact = compact
     }
 
     var body: some View {
+        if compact {
+            compactBadge
+        } else {
+            fullBadge
+        }
+    }
+
+    // MARK: - Compact Badge (for toolbar)
+
+    private var compactBadge: some View {
+        HStack(spacing: 4) {
+            if currentStreak > 0 {
+                Text("🔥")
+                    .font(.system(size: 14))
+                    .scaleEffect(didJustIncrement ? 1.15 : 1.0)
+            }
+            Text("\(displayedStreak)")
+                .font(.inter(13, weight: .semibold))
+                .foregroundColor(currentStreak > 0 ? Accent.streak : .secondary)
+                .contentTransition(.numericText(value: Double(displayedStreak)))
+        }
+        .padding(.horizontal, Spacing.small)
+        .padding(.vertical, Spacing.micro)
+        .background(Accent.streak.opacity(currentStreak > 0 ? 0.1 : 0.05))
+        .cornerRadius(CornerRadius.small)
+        .onAppear { displayedStreak = currentStreak }
+        .onChange(of: currentStreak) { oldValue, newValue in
+            animateStreakChange(from: oldValue, to: newValue)
+        }
+    }
+
+    // MARK: - Full Badge
+
+    private var fullBadge: some View {
         HStack(spacing: Spacing.small) {
             // Fire emoji - static, no animation
             if currentStreak > 0 {
@@ -81,24 +118,28 @@ struct StreakBadge: View {
             RoundedRectangle(cornerRadius: CornerRadius.large)
                 .stroke(Accent.streak.opacity(currentStreak > 0 ? 0.2 : 0), lineWidth: 1)
         )
-        .onAppear {
-            displayedStreak = currentStreak
-        }
+        .onAppear { displayedStreak = currentStreak }
         .onChange(of: currentStreak) { oldValue, newValue in
-            // Animate the number change
-            withAnimation(SpringPreset.snappy) {
-                displayedStreak = newValue
-            }
+            animateStreakChange(from: oldValue, to: newValue)
+        }
+    }
 
-            // Single pulse on increment
-            if newValue > oldValue {
-                withAnimation(SpringPreset.snappy) {
-                    didJustIncrement = true
-                }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    withAnimation(SpringPreset.smooth) {
-                        didJustIncrement = false
-                    }
+    // MARK: - Animation Helper
+
+    private func animateStreakChange(from oldValue: Int, to newValue: Int) {
+        // Animate the number change
+        withAnimation(SpringPreset.snappy) {
+            displayedStreak = newValue
+        }
+
+        // Single pulse on increment
+        if newValue > oldValue {
+            withAnimation(SpringPreset.snappy) {
+                didJustIncrement = true
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                withAnimation(SpringPreset.smooth) {
+                    didJustIncrement = false
                 }
             }
         }

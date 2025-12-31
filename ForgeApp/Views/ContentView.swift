@@ -2,6 +2,8 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(AppState.self) private var appState
+    @State private var showingAddFeature = false
+    @State private var newFeatureTitle = ""
 
     var body: some View {
         @Bindable var state = appState
@@ -106,16 +108,63 @@ struct ContentView: View {
             }
         }
         .toolbar {
+            // Left side: Project name
+            ToolbarItemGroup(placement: .navigation) {
+                if let project = appState.selectedProject {
+                    HStack(spacing: Spacing.small) {
+                        Image(systemName: "folder.fill")
+                            .foregroundColor(Linear.textSecondary)
+                            .font(.system(size: 14))
+                        Text(project.name)
+                            .font(Typography.bodyMedium)
+                            .foregroundColor(Linear.textPrimary)
+                    }
+                }
+            }
+
+            // Right side: Streak, Quick Add, Search, Refresh
             ToolbarItemGroup(placement: .primaryAction) {
-                // Refresh button (useful for checking server status)
+                // Shipping streak badge (compact)
+                StreakBadge(
+                    currentStreak: appState.shippingStats.currentStreak,
+                    longestStreak: appState.shippingStats.longestStreak,
+                    totalShipped: appState.shippingStats.totalShipped,
+                    showDetails: false,
+                    compact: true
+                )
+
+                // Quick add button
+                Button {
+                    showingAddFeature = true
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .help("Add Feature (Cmd+N)")
+                .disabled(appState.selectedProject == nil)
+
+                // Search / Command palette placeholder
+                Button {
+                    // TODO: Trigger command palette
+                } label: {
+                    Image(systemName: "magnifyingglass")
+                }
+                .help("Search (Cmd+K)")
+
+                // Refresh button
                 Button {
                     refreshFeatures()
                 } label: {
-                    Label("Refresh", systemImage: "arrow.clockwise")
+                    Image(systemName: "arrow.clockwise")
                 }
-                .help("Refresh features from server")
-                .keyboardShortcut("r", modifiers: .command)
+                .help("Refresh (Cmd+R)")
             }
+        }
+        .sheet(isPresented: $showingAddFeature) {
+            QuickAddFeatureSheet(
+                isPresented: $showingAddFeature,
+                featureTitle: $newFeatureTitle
+            )
+            .environment(appState)
         }
     }
 

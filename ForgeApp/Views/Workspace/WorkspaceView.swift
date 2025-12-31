@@ -98,17 +98,8 @@ struct WorkspaceView: View {
 
     private var vibeInputSection: some View {
         VStack(alignment: .leading, spacing: Spacing.medium) {
-            // Header with streak
-            HStack(alignment: .center) {
-                if let project = appState.selectedProject {
-                    Text(project.name)
-                        .font(Typography.largeTitle)
-                }
-
-                Spacer()
-            }
-
             // The iconic vibe input - submit adds directly to queue
+            // Project name is now in the unified toolbar
             VibeInputWithScope(
                 text: $vibeText,
                 onSubmit: { idea in

@@ -39,6 +39,8 @@ struct ForgeApp: App {
                     .environment(appState)
                 }
         }
+        .windowStyle(.hiddenTitleBar)
+        .windowToolbarStyle(.unified)
         .commands {
             // App menu - Check for Updates
             CommandGroup(after: .appInfo) {
