@@ -42,8 +42,9 @@ struct BrainstormChatView: View {
                             ForEach(client.messages) { message in
                                 // Show streaming text for the last assistant message while typing
                                 let isLastAssistant = message.id == client.messages.last?.id && message.role == .assistant
-                                let displayText = isLastAssistant && client.isTyping ? client.streamingText : message.content
-                                MessageBubble(message: message, displayText: displayText)
+                                let displayText = isLastAssistant && client.isTyping ? client.streamingText : nil
+                                // EquatableView prevents re-renders when content unchanged
+                                EquatableView(content: MessageBubble(message: message, displayText: displayText))
                                     .id(message.id)
                             }
                         }
@@ -404,13 +405,24 @@ struct BrainstormChatView: View {
 
 // MARK: - Message Bubble
 
-struct MessageBubble: View {
+/// Efficient message bubble using native text views.
+/// SwiftUI Text + textSelection is expensive for long content.
+struct MessageBubble: View, Equatable {
     let message: BrainstormClient.BrainstormMessage
     var displayText: String? = nil  // Override text (for streaming)
+
+    static func == (lhs: MessageBubble, rhs: MessageBubble) -> Bool {
+        lhs.message.id == rhs.message.id &&
+        lhs.displayText == rhs.displayText
+    }
 
     private var textToShow: String {
         let text = displayText ?? message.content
         return text.isEmpty ? "..." : text
+    }
+
+    private var isUser: Bool {
+        message.role == .user
     }
 
     /// Whether this is a completed message (not streaming)
@@ -418,57 +430,81 @@ struct MessageBubble: View {
         displayText == nil
     }
 
-    @ViewBuilder
-    private var messageContent: some View {
-        let baseText = Text(textToShow)
-            .font(Typography.body)
-            .padding(Spacing.medium)
-            .frame(maxWidth: 500, alignment: message.role == .user ? .trailing : .leading)
-            .fixedSize(horizontal: false, vertical: true)
-            .background(message.role == .user ? Accent.primary : Linear.card)
-            .foregroundColor(message.role == .user ? .white : Linear.textPrimary)
-            .cornerRadius(CornerRadius.large)
-            .overlay(
-                RoundedRectangle(cornerRadius: CornerRadius.large)
-                    .stroke(message.role == .user ? Color.clear : Linear.borderSubtle, lineWidth: 1)
-            )
-
-        // Only enable text selection for completed messages to avoid layout hangs
-        if isCompleted {
-            baseText.textSelection(.enabled)
-        } else {
-            baseText
-        }
-    }
-
     var body: some View {
         HStack(alignment: .top, spacing: Spacing.medium) {
-            if message.role == .user {
+            if isUser {
                 Spacer(minLength: 60)
             }
 
-            VStack(alignment: message.role == .user ? .trailing : .leading, spacing: Spacing.micro) {
+            VStack(alignment: isUser ? .trailing : .leading, spacing: Spacing.micro) {
                 // Role indicator
                 HStack(spacing: Spacing.micro) {
-                    if message.role == .assistant {
+                    if !isUser {
                         Image(systemName: "brain.head.profile")
                             .font(.caption)
                             .foregroundColor(Accent.primary)
                     }
-                    Text(message.role == .user ? "You" : "Claude")
+                    Text(isUser ? "You" : "Claude")
                         .font(Typography.caption)
                         .foregroundColor(Linear.textSecondary)
                 }
 
-                // Message content - use fixed size to avoid layout explosion
-                // textSelection causes hangs with LazyVStack during streaming
-                messageContent
+                // Message content - native text view for efficiency
+                MessageContentView(
+                    text: textToShow,
+                    isUser: isUser,
+                    isCompleted: isCompleted
+                )
             }
 
-            if message.role == .assistant {
+            if !isUser {
                 Spacer(minLength: 60)
             }
         }
+    }
+}
+
+/// Native text view wrapped in bubble styling.
+/// Separating this allows SwiftUI to diff more efficiently.
+private struct MessageContentView: View {
+    let text: String
+    let isUser: Bool
+    let isCompleted: Bool
+
+    var body: some View {
+        #if os(macOS)
+        NativeTextView(
+            text: text,
+            font: .systemFont(ofSize: 13),
+            textColor: isUser ? .white : NSColor(Linear.textPrimary),
+            backgroundColor: .clear,
+            isSelectable: isCompleted  // Only selectable when not streaming
+        )
+        .padding(Spacing.medium)
+        .frame(maxWidth: 500, alignment: isUser ? .trailing : .leading)
+        .background(isUser ? Accent.primary : Linear.card)
+        .cornerRadius(CornerRadius.large)
+        .overlay(
+            RoundedRectangle(cornerRadius: CornerRadius.large)
+                .stroke(isUser ? Color.clear : Linear.borderSubtle, lineWidth: 1)
+        )
+        #else
+        NativeTextView(
+            text: text,
+            font: .systemFont(ofSize: 15),
+            textColor: isUser ? .white : UIColor(Linear.textPrimary),
+            backgroundColor: .clear,
+            isSelectable: isCompleted
+        )
+        .padding(Spacing.medium)
+        .frame(maxWidth: 500, alignment: isUser ? .trailing : .leading)
+        .background(isUser ? Accent.primary : Linear.card)
+        .cornerRadius(CornerRadius.large)
+        .overlay(
+            RoundedRectangle(cornerRadius: CornerRadius.large)
+                .stroke(isUser ? Color.clear : Linear.borderSubtle, lineWidth: 1)
+        )
+        #endif
     }
 }
 
