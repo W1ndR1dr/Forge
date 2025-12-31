@@ -108,38 +108,87 @@ enum Accent {
     /// Danger — destructive actions, blockers
     static let danger = Color.red
 
+    /// Attention/Gold — priority indicators, non-warning emphasis
+    static let attention = Color(hex: "eab308")
+
+    /// Brainstorm/Ideas — refinement, AI assistance
+    static let brainstorm = Color.purple
+
     /// Streak fire — motivation, gamification
     static let streak = Color.orange
 }
 
 // MARK: - Typography Scale
+// Linear uses Inter for body/UI and Inter Display for headings
+// Exact sizes from Linear's web app analysis
+//
 // "Above all else, show the data" — Tufte
-// Hierarchy is purposeful, not decorative
+
+/// Inter font helpers
+extension Font {
+    /// Inter font with specified size and weight
+    /// Falls back to system font if Inter is not available
+    static func inter(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        .custom("Inter", size: size).weight(weight)
+    }
+
+    /// Inter Display for headings
+    static func interDisplay(_ size: CGFloat, weight: Font.Weight = .semibold) -> Font {
+        .custom("InterDisplay", size: size).weight(weight)
+    }
+}
 
 enum Typography {
-    /// Project name, main headers — Large Title
-    static let largeTitle = Font.largeTitle.weight(.bold)
+    // MARK: - Headings (Inter Display)
 
-    /// Section headers — Title 2
-    static let sectionHeader = Font.title2.weight(.semibold)
+    /// Hero heading - 62px, weight 800 (Black)
+    static let hero = Font.interDisplay(62, weight: .black)
 
-    /// Feature titles — Headline
-    static let featureTitle = Font.headline.weight(.semibold)
+    /// Section heading - 20px, weight 600 (Semibold)
+    static let sectionHeader = Font.interDisplay(20, weight: .semibold)
 
-    /// Descriptions, body text — Body
-    static let body = Font.body
+    /// Feature title - headline size, semibold
+    static let featureTitle = Font.inter(15, weight: .semibold)
 
-    /// Metadata, timestamps — Caption
-    static let caption = Font.caption.weight(.regular)
+    // MARK: - Body (Inter)
 
-    /// Badges, tags — Caption 2
-    static let badge = Font.caption2.weight(.medium)
+    /// Body large - 15-16px
+    static let bodyLarge = Font.inter(15, weight: .regular)
 
-    /// Streak number — custom large
+    /// Body - 14px (Linear's standard body)
+    static let body = Font.inter(14, weight: .regular)
+
+    /// Body medium weight
+    static let bodyMedium = Font.inter(14, weight: .medium)
+
+    // MARK: - Labels & Captions
+
+    /// Label/caption - 12px, semibold, used for section labels
+    static let label = Font.inter(12, weight: .semibold)
+
+    /// Caption - 12px, regular
+    static let caption = Font.inter(12, weight: .regular)
+
+    /// Muted text - 13px
+    static let muted = Font.inter(13, weight: .regular)
+
+    /// Badges, tags - 11px, medium
+    static let badge = Font.inter(11, weight: .medium)
+
+    // MARK: - Special
+
+    /// Streak number — large, rounded
     static let streakNumber = Font.system(size: 28, weight: .bold, design: .rounded)
 
-    /// Vibe input placeholder — inviting
-    static let vibeInput = Font.title3.weight(.regular)
+    /// Vibe input placeholder
+    static let vibeInput = Font.inter(16, weight: .regular)
+
+    /// Monospaced for code
+    static let mono = Font.system(size: 13, design: .monospaced)
+
+    // MARK: - Legacy Aliases
+
+    static var largeTitle: Font { sectionHeader }
 }
 
 // MARK: - Spacing Scale
@@ -166,42 +215,74 @@ enum Spacing {
 }
 
 // MARK: - Corner Radius
-// Consistent curves — considered, not arbitrary
-// Linear style: tighter radii (6-8px for cards)
+// Linear's precise, tight radii
+// Cards: 10px, Buttons: 8px, Inputs: 8px, Popovers: 12px
 
 enum CornerRadius {
-    /// Small — 4pt (badges, chips)
+    /// Small — 4pt (badges, chips, inline tags)
     static let small: CGFloat = 4
 
-    /// Medium — 6pt (buttons, inputs)
+    /// Medium — 6pt (sidebar rows, small interactive elements)
     static let medium: CGFloat = 6
 
-    /// Large — 8pt (cards, section containers)
+    /// Large — 8pt (buttons, inputs, text fields)
     static let large: CGFloat = 8
 
-    /// XL — 10pt (modals, sheets)
+    /// XL — 10pt (cards, panels)
     static let xl: CGFloat = 10
+
+    /// XXL — 12pt (popovers, dropdowns, modals)
+    static let xxl: CGFloat = 12
 }
 
 // MARK: - Shadows
-// Subtle depth — Ive's material thinking
+// Linear uses very soft, large-radius shadows with low opacity
+// Creates depth without harsh edges
 
+extension View {
+    /// Subtle shadow for resting cards
+    func linearSubtleShadow() -> some View {
+        self.shadow(
+            color: Color.black.opacity(0.15),
+            radius: 8,
+            x: 0,
+            y: 2
+        )
+    }
+
+    /// Card shadow for elevated panels
+    func linearCardShadow() -> some View {
+        self.shadow(
+            color: Color.black.opacity(0.25),
+            radius: 20,
+            x: 0,
+            y: 8
+        )
+    }
+
+    /// Dropdown/popover shadow
+    func linearDropdownShadow() -> some View {
+        self.shadow(
+            color: Color.black.opacity(0.4),
+            radius: 32,
+            x: 0,
+            y: 16
+        )
+    }
+}
+
+// Legacy Shadow enum for compatibility
 enum Shadow {
-    /// Subtle shadow — resting state
     static func subtle(_ colorScheme: ColorScheme) -> some View {
-        Color.black.opacity(colorScheme == .dark ? 0.3 : 0.08)
+        Color.black.opacity(0.15)
     }
 
-    /// Elevated shadow — hover, focus
     static func elevated(_ colorScheme: ColorScheme) -> some View {
-        Color.black.opacity(colorScheme == .dark ? 0.4 : 0.12)
+        Color.black.opacity(0.25)
     }
 
-    /// Shadow radius for resting state
-    static let subtleRadius: CGFloat = 2
-
-    /// Shadow radius for elevated state
-    static let elevatedRadius: CGFloat = 8
+    static let subtleRadius: CGFloat = 8
+    static let elevatedRadius: CGFloat = 20
 }
 
 // MARK: - Animation Timing
@@ -223,47 +304,97 @@ enum Timing {
 }
 
 // MARK: - Linear Design System
-// Inspired by Linear's crisp, dark, information-dense aesthetic
+// Exact values extracted from Linear's Midnight theme
+// Source: linear.app themes, brand guidelines, and UI analysis
+//
+// Philosophy: opacity-based elevation, perceptual uniformity, ruthless consistency
 
 enum Linear {
     // MARK: - Backgrounds (darkest to lightest)
+    // Linear uses warm undertones in their near-black backgrounds
 
-    /// Base window background - pure dark
-    static let base = Color(hex: "0a0a0a")
+    /// Base window background - Linear's primary dark (#0F0F10)
+    static let background = Color(red: 0.059, green: 0.059, blue: 0.063)
 
-    /// Elevated surface - section containers
-    static let elevated = Color(hex: "141414")
+    /// Elevated surface - cards, panels (#151516)
+    static let surface = Color(red: 0.082, green: 0.082, blue: 0.086)
 
-    /// Card surface - nested cards within sections
-    static let card = Color(hex: "1a1a1a")
+    /// Floating surface - dropdowns, popovers (#1A1A1C)
+    static let surfaceElevated = Color(hex: "1A1A1C")
 
-    /// Hover state - subtle highlight
-    static let hover = Color(hex: "242424")
+    /// Modal surface - dialogs, command palette (#1E1E20)
+    static let surfaceModal = Color(hex: "1E1E20")
 
-    // MARK: - Borders
+    // MARK: - Interactive States (opacity-based, not solid colors)
 
-    /// Subtle hairline border - default
-    static let borderSubtle = Color(hex: "2a2a2a")
+    /// Hover background - subtle highlight
+    static let hoverBackground = Color.white.opacity(0.06)
 
-    /// Visible border - emphasized
-    static let borderVisible = Color(hex: "333333")
+    /// Selected/active background
+    static let selectedBackground = Color.white.opacity(0.1)
 
-    /// Focus border - interactive elements
-    static let borderFocus = Color.white.opacity(0.15)
+    /// Pressed state background
+    static let pressedBackground = Color.white.opacity(0.08)
 
-    // MARK: - Text Hierarchy
+    // MARK: - Borders (opacity-based for consistency)
 
-    /// Primary text - headings, important content
-    static let textPrimary = Color(hex: "fafafa")
+    /// Default hairline border
+    static let border = Color.white.opacity(0.08)
 
-    /// Secondary text - descriptions, body
-    static let textSecondary = Color(hex: "a0a0a0")
+    /// Hover state border
+    static let borderHover = Color.white.opacity(0.12)
 
-    /// Tertiary text - metadata, timestamps, section headers
-    static let textTertiary = Color(hex: "666666")
+    /// Focus state border - uses accent color
+    static let borderFocus = Color(hex: "5E6AD2").opacity(0.5)
 
-    /// Muted text - disabled, placeholders
-    static let textMuted = Color(hex: "4a4a4a")
+    // MARK: - Text Hierarchy (exact Linear values)
+
+    /// Primary text - headings, important content (#EEEFF1)
+    static let textPrimary = Color(red: 0.933, green: 0.937, blue: 0.945)
+
+    /// Secondary text - descriptions, body (#95A2B3)
+    static let textSecondary = Color(red: 0.584, green: 0.635, blue: 0.702)
+
+    /// Tertiary text - metadata, hints (#6B7280)
+    static let textTertiary = Color(hex: "6B7280")
+
+    /// Muted text - disabled, placeholders (#4B5563)
+    static let textMuted = Color(hex: "4B5563")
+
+    // MARK: - Accent Colors (Linear's signature indigo)
+
+    /// Primary accent - Linear's signature indigo (#5E6AD2)
+    static let accent = Color(hex: "5E6AD2")
+
+    /// Accent hover state (#6872D9)
+    static let accentHover = Color(hex: "6872D9")
+
+    /// Accent pressed state (#4551B5)
+    static let accentPressed = Color(hex: "4551B5")
+
+    // MARK: - Semantic Colors (muted, desaturated for dark theme)
+
+    /// Success - muted green (#4DA673)
+    static let success = Color(hex: "4DA673")
+
+    /// Warning - warm amber (#EAA94B)
+    static let warning = Color(hex: "EAA94B")
+
+    /// Error - soft red (#D25E65)
+    static let error = Color(hex: "D25E65")
+
+    /// Info - soft blue (same as accent)
+    static let info = Color(hex: "5E6AD2")
+
+    // MARK: - Legacy Aliases (for migration)
+    // TODO: Remove these after updating all views
+
+    static var base: Color { background }
+    static var elevated: Color { surface }
+    static var card: Color { surface }
+    static var hover: Color { hoverBackground }
+    static var borderSubtle: Color { border }
+    static var borderVisible: Color { borderHover }
 }
 
 // MARK: - Helper Extensions
@@ -304,59 +435,91 @@ extension Color {
 }
 
 // MARK: - Design Token View Modifiers
+// Linear-style modifiers for consistent UI
 
 extension View {
-    /// Apply card styling with proper elevation
-    func cardStyle(isActive: Bool = false) -> some View {
+    /// Apply card styling with Linear's elevation system
+    func linearCard(isSelected: Bool = false) -> some View {
         self
             .padding(Spacing.standard)
-            .background(isActive ? Surface.highlighted : Surface.elevated)
-            .cornerRadius(CornerRadius.large)
+            .background(
+                RoundedRectangle(cornerRadius: CornerRadius.xl, style: .continuous)
+                    .fill(Linear.surface)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: CornerRadius.xl, style: .continuous)
+                            .strokeBorder(
+                                isSelected ? Linear.accent.opacity(0.5) : Linear.border,
+                                lineWidth: 1
+                            )
+                    )
+            )
+            .linearSubtleShadow()
     }
 
-    /// Apply badge styling
+    /// Apply badge styling - tight, precise
     func badgeStyle(color: Color) -> some View {
         self
             .font(Typography.badge)
-            .padding(.horizontal, Spacing.small)
-            .padding(.vertical, Spacing.micro)
-            .background(color.opacity(0.2))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(color.opacity(0.15))
             .foregroundColor(color)
             .cornerRadius(CornerRadius.small)
     }
 
-    /// Apply section header styling
+    /// Apply section header styling - Linear's uppercase, spaced labels
     func sectionHeaderStyle() -> some View {
         self
-            .font(Typography.caption)
-            .fontWeight(.semibold)
-            .foregroundColor(Linear.textTertiary)
+            .font(.inter(11, weight: .semibold))
+            .foregroundColor(Linear.textSecondary)
             .textCase(.uppercase)
             .tracking(0.5)
     }
 
-    /// Apply Linear-style section container with dark background and hairline border
+    /// Apply Linear-style section container
     func linearSection() -> some View {
         self
             .padding(Spacing.standard)
-            .background(Linear.elevated)
-            .cornerRadius(CornerRadius.large)
-            .overlay(
-                RoundedRectangle(cornerRadius: CornerRadius.large)
-                    .stroke(Linear.borderSubtle, lineWidth: 1)
+            .background(
+                RoundedRectangle(cornerRadius: CornerRadius.xl, style: .continuous)
+                    .fill(Linear.surface)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: CornerRadius.xl, style: .continuous)
+                            .strokeBorder(Linear.border, lineWidth: 1)
+                    )
             )
     }
 
-    /// Apply Linear-style card styling (for nested cards within sections)
-    func linearCard() -> some View {
+    /// Apply popover/dropdown styling
+    func linearPopover() -> some View {
         self
-            .padding(Spacing.medium)
-            .background(Linear.card)
-            .cornerRadius(CornerRadius.large)
-            .overlay(
-                RoundedRectangle(cornerRadius: CornerRadius.large)
-                    .stroke(Linear.borderSubtle, lineWidth: 1)
+            .padding(8)
+            .background(
+                RoundedRectangle(cornerRadius: CornerRadius.xxl, style: .continuous)
+                    .fill(Linear.surfaceElevated)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: CornerRadius.xxl, style: .continuous)
+                            .strokeBorder(Linear.border, lineWidth: 1)
+                    )
             )
+            .linearDropdownShadow()
+    }
+
+    /// Linear-style hover modifier with 150ms timing
+    func linearHover(isHovered: Bool, radius: CGFloat = CornerRadius.medium) -> some View {
+        self
+            .background(
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .fill(isHovered ? Linear.hoverBackground : Color.clear)
+            )
+            .animation(.easeInOut(duration: 0.15), value: isHovered)
+    }
+
+    // MARK: - Legacy Aliases
+
+    /// Legacy card style
+    func cardStyle(isActive: Bool = false) -> some View {
+        self.linearCard(isSelected: isActive)
     }
 }
 
@@ -385,6 +548,322 @@ enum DesignTokens {
         static let sm: CGFloat = 4
         static let md: CGFloat = 8
         static let lg: CGFloat = 12
+    }
+}
+
+// MARK: - Linear Button Styles
+// Exact patterns from Linear's UI
+// - Press scale: 0.97
+// - Press duration: 120ms (.snappy(duration: 0.12))
+// - Hover duration: 150ms (.easeInOut(duration: 0.15))
+
+/// Primary action button - filled background with accent color
+struct LinearPrimaryButtonStyle: ButtonStyle {
+    var color: Color = Linear.accent
+    @State private var isHovered = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.inter(14, weight: .medium))
+            .padding(.vertical, 8)
+            .padding(.horizontal, 14)
+            .foregroundColor(.white)
+            .background(
+                RoundedRectangle(cornerRadius: CornerRadius.large, style: .continuous)
+                    .fill(backgroundColor(isPressed: configuration.isPressed))
+            )
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(.snappy(duration: 0.12), value: configuration.isPressed)
+            .onHover { isHovered = $0 }
+    }
+
+    private func backgroundColor(isPressed: Bool) -> Color {
+        if isPressed { return Linear.accentPressed }
+        if isHovered { return Linear.accentHover }
+        return color
+    }
+}
+
+/// Secondary action button - subtle background with border
+struct LinearSecondaryButtonStyle: ButtonStyle {
+    var color: Color = Linear.textPrimary
+    @State private var isHovered = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.inter(14, weight: .medium))
+            .padding(.vertical, 8)
+            .padding(.horizontal, 14)
+            .foregroundColor(color)
+            .background(
+                RoundedRectangle(cornerRadius: CornerRadius.large, style: .continuous)
+                    .fill(backgroundColor(isPressed: configuration.isPressed))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: CornerRadius.large, style: .continuous)
+                    .strokeBorder(Linear.border, lineWidth: 1)
+            )
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(.snappy(duration: 0.12), value: configuration.isPressed)
+            .onHover { hovering in
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    isHovered = hovering
+                }
+            }
+    }
+
+    private func backgroundColor(isPressed: Bool) -> Color {
+        if isPressed { return Linear.pressedBackground }
+        if isHovered { return Linear.hoverBackground }
+        return Color.clear
+    }
+}
+
+/// Ghost button - text only, hover shows subtle background
+struct LinearGhostButtonStyle: ButtonStyle {
+    var color: Color = Linear.textSecondary
+    @State private var isHovered = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.inter(14, weight: .medium))
+            .padding(.vertical, 6)
+            .padding(.horizontal, 12)
+            .foregroundColor(color)
+            .background(
+                RoundedRectangle(cornerRadius: CornerRadius.medium, style: .continuous)
+                    .fill(isHovered ? Linear.hoverBackground : Color.clear)
+            )
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(.snappy(duration: 0.12), value: configuration.isPressed)
+            .onHover { hovering in
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    isHovered = hovering
+                }
+            }
+    }
+}
+
+// MARK: - Button Style Extensions
+
+extension ButtonStyle where Self == LinearPrimaryButtonStyle {
+    static var linearPrimary: LinearPrimaryButtonStyle { LinearPrimaryButtonStyle() }
+    static func linearPrimary(color: Color) -> LinearPrimaryButtonStyle {
+        LinearPrimaryButtonStyle(color: color)
+    }
+}
+
+extension ButtonStyle where Self == LinearSecondaryButtonStyle {
+    static var linearSecondary: LinearSecondaryButtonStyle { LinearSecondaryButtonStyle() }
+    static func linearSecondary(color: Color) -> LinearSecondaryButtonStyle {
+        LinearSecondaryButtonStyle(color: color)
+    }
+}
+
+extension ButtonStyle where Self == LinearGhostButtonStyle {
+    static var linearGhost: LinearGhostButtonStyle { LinearGhostButtonStyle() }
+    static func linearGhost(color: Color) -> LinearGhostButtonStyle {
+        LinearGhostButtonStyle(color: color)
+    }
+}
+
+// MARK: - Linear TextField Style
+// Dark-native text fields that fit Linear's aesthetic
+
+struct LinearTextFieldStyle: TextFieldStyle {
+    @FocusState private var isFocused: Bool
+
+    func _body(configuration: TextField<Self._Label>) -> some View {
+        configuration
+            .textFieldStyle(.plain)
+            .font(.inter(14))
+            .padding(.vertical, 10)
+            .padding(.horizontal, 12)
+            .background(
+                RoundedRectangle(cornerRadius: CornerRadius.large, style: .continuous)
+                    .fill(Linear.surface)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: CornerRadius.large, style: .continuous)
+                    .strokeBorder(Linear.border, lineWidth: 1)
+            )
+    }
+}
+
+extension TextFieldStyle where Self == LinearTextFieldStyle {
+    static var linear: LinearTextFieldStyle { LinearTextFieldStyle() }
+}
+
+// MARK: - Linear Search Field Component
+
+struct LinearSearchField: View {
+    @Binding var text: String
+    var placeholder: String = "Search..."
+    @FocusState private var isFocused: Bool
+    @State private var isHovered = false
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(Linear.textSecondary)
+
+            TextField(placeholder, text: $text)
+                .textFieldStyle(.plain)
+                .font(.inter(14))
+                .foregroundColor(Linear.textPrimary)
+                .focused($isFocused)
+
+            if !text.isEmpty {
+                Button {
+                    text = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(Linear.textSecondary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .background(
+            RoundedRectangle(cornerRadius: CornerRadius.large, style: .continuous)
+                .fill(Linear.surface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: CornerRadius.large, style: .continuous)
+                        .strokeBorder(borderColor, lineWidth: 1)
+                )
+        )
+        .onHover { isHovered = $0 }
+    }
+
+    private var borderColor: Color {
+        if isFocused { return Linear.borderFocus }
+        if isHovered { return Linear.borderHover }
+        return Linear.border
+    }
+}
+
+// MARK: - Linear Row Components
+// Dense list rows: 32-36px height, tight vertical, generous horizontal padding
+
+/// Linear-style list row with hover state
+struct LinearRow<Content: View>: View {
+    let content: Content
+    var isSelected: Bool = false
+    @State private var isHovered = false
+
+    init(isSelected: Bool = false, @ViewBuilder content: () -> Content) {
+        self.isSelected = isSelected
+        self.content = content()
+    }
+
+    var body: some View {
+        content
+            .padding(.vertical, 6)      // Tight vertical (32-36px total height)
+            .padding(.horizontal, 12)   // Generous horizontal
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: CornerRadius.medium, style: .continuous)
+                    .fill(backgroundColor)
+            )
+            .onHover { hovering in
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    isHovered = hovering
+                }
+            }
+    }
+
+    private var backgroundColor: Color {
+        if isSelected { return Linear.selectedBackground }
+        if isHovered { return Linear.hoverBackground }
+        return Color.clear
+    }
+}
+
+/// Linear-style sidebar row with icon, title, and optional count
+struct LinearSidebarRow: View {
+    let icon: String
+    let title: String
+    var count: Int? = nil
+    var isSelected: Bool = false
+    @State private var isHovered = false
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(isSelected ? Linear.textPrimary : Linear.textSecondary)
+                .frame(width: 18)
+
+            Text(title)
+                .font(.inter(14))
+                .foregroundColor(isSelected ? Linear.textPrimary : Linear.textPrimary)
+
+            Spacer()
+
+            if let count = count, count > 0 {
+                Text("\(count)")
+                    .font(.inter(12))
+                    .foregroundColor(Linear.textSecondary)
+            }
+        }
+        .padding(.vertical, 7)
+        .padding(.horizontal, 12)
+        .background(
+            RoundedRectangle(cornerRadius: CornerRadius.medium, style: .continuous)
+                .fill(backgroundColor)
+        )
+        .padding(.horizontal, 8)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
+        }
+    }
+
+    private var backgroundColor: Color {
+        if isSelected { return Linear.selectedBackground }
+        if isHovered { return Linear.hoverBackground }
+        return Color.clear
+    }
+}
+
+/// Linear-style tab bar with matched geometry selection indicator
+struct LinearTabBar: View {
+    @Binding var selection: Int
+    let tabs: [String]
+    @Namespace private var namespace
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(Array(tabs.enumerated()), id: \.offset) { index, title in
+                Button {
+                    withAnimation(.snappy(duration: 0.25)) {
+                        selection = index
+                    }
+                } label: {
+                    Text(title)
+                        .font(.inter(13, weight: selection == index ? .semibold : .regular))
+                        .foregroundColor(selection == index ? Linear.textPrimary : Linear.textSecondary)
+                        .padding(.vertical, 6)
+                        .padding(.horizontal, 12)
+                        .background {
+                            if selection == index {
+                                RoundedRectangle(cornerRadius: CornerRadius.medium, style: .continuous)
+                                    .fill(Linear.selectedBackground)
+                                    .matchedGeometryEffect(id: "tab", in: namespace)
+                            }
+                        }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(4)
+        .background(
+            RoundedRectangle(cornerRadius: CornerRadius.large, style: .continuous)
+                .fill(Linear.surface)
+        )
     }
 }
 

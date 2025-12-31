@@ -78,6 +78,8 @@ struct BrainstormChatView: View {
             inputView
         }
         .frame(minWidth: 600, idealWidth: 750, minHeight: 550, idealHeight: 700)
+        .background(Linear.base)
+        .environment(\.colorScheme, .dark)
         .onAppear {
             client.connect(
                 project: project,
@@ -130,12 +132,12 @@ struct BrainstormChatView: View {
 
                 HStack(spacing: Spacing.small) {
                     Circle()
-                        .fill(client.isConnected ? Color.green : Color.red)
+                        .fill(client.isConnected ? Accent.success : Accent.danger)
                         .frame(width: 8, height: 8)
 
                     Text(client.isConnected ? "Connected to Claude" : "Connecting...")
                         .font(Typography.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(Linear.textSecondary)
                 }
             }
 
@@ -144,7 +146,7 @@ struct BrainstormChatView: View {
             Button(action: { client.reset() }) {
                 Image(systemName: "arrow.counterclockwise")
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.linearSecondary)
             .help("Start fresh")
 
             // Generate Spec button - only show after some conversation
@@ -160,8 +162,7 @@ struct BrainstormChatView: View {
                         Text("Generate Spec")
                     }
                 }
-                .buttonStyle(.bordered)
-                .tint(Accent.primary)
+                .buttonStyle(.linearSecondary(color: Accent.primary))
                 .help("Generate spec from current conversation")
                 .disabled(isGeneratingSpec)
             }
@@ -169,7 +170,7 @@ struct BrainstormChatView: View {
             Button("Done") {
                 dismiss()
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.linearPrimary)
             .keyboardShortcut(.escape)
         }
         .padding(Spacing.standard)
@@ -250,8 +251,13 @@ struct BrainstormChatView: View {
             }
             .padding(.horizontal, Spacing.medium)
             .padding(.vertical, Spacing.small)
-            .background(Surface.elevated)
+            .background(Linear.card)
+            .foregroundColor(Linear.textSecondary)
             .cornerRadius(CornerRadius.large)
+            .overlay(
+                RoundedRectangle(cornerRadius: CornerRadius.large)
+                    .stroke(Linear.borderSubtle, lineWidth: 1)
+            )
         }
         .buttonStyle(.plain)
     }
@@ -305,17 +311,13 @@ struct BrainstormChatView: View {
                         Image(systemName: "sparkles")
                         Text("Generate Spec")
                     }
-                    .font(Typography.caption)
-                    .fontWeight(.medium)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(Accent.primary)
+                .buttonStyle(.linearPrimary(color: Accent.primary))
 
                 Button(action: { /* Just dismiss by doing nothing - banner won't show during typing */ }) {
                     Text("Continue Anyway")
-                        .font(Typography.caption)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.linearSecondary)
             }
         }
         .padding(Spacing.standard)
@@ -339,6 +341,7 @@ struct BrainstormChatView: View {
             TextField("Type your idea...", text: $inputText, axis: .vertical)
                 .textFieldStyle(.plain)
                 .font(Typography.body)
+                .foregroundColor(Linear.textPrimary)
                 .lineLimit(1...5)
                 .focused($isInputFocused)
                 .onSubmit {
@@ -360,11 +363,17 @@ struct BrainstormChatView: View {
                 .frame(width: 28, height: 28)
             }
             .buttonStyle(.plain)
-            .foregroundColor(inputText.isEmpty ? .secondary : Accent.primary)
+            .foregroundColor(inputText.isEmpty ? Linear.textMuted : Accent.primary)
             .disabled(inputText.isEmpty || client.isTyping)
         }
         .padding(Spacing.standard)
-        .background(Surface.elevated)
+        .background(Linear.elevated)
+        .overlay(
+            Rectangle()
+                .fill(Linear.borderSubtle)
+                .frame(height: 1),
+            alignment: .top
+        )
     }
 
     // MARK: - Actions
@@ -414,9 +423,13 @@ struct MessageBubble: View {
             .padding(Spacing.medium)
             .frame(maxWidth: 500, alignment: message.role == .user ? .trailing : .leading)
             .fixedSize(horizontal: false, vertical: true)
-            .background(message.role == .user ? Accent.primary : Surface.elevated)
-            .foregroundColor(message.role == .user ? .white : .primary)
+            .background(message.role == .user ? Accent.primary : Linear.card)
+            .foregroundColor(message.role == .user ? .white : Linear.textPrimary)
             .cornerRadius(CornerRadius.large)
+            .overlay(
+                RoundedRectangle(cornerRadius: CornerRadius.large)
+                    .stroke(message.role == .user ? Color.clear : Linear.borderSubtle, lineWidth: 1)
+            )
 
         // Only enable text selection for completed messages to avoid layout hangs
         if isCompleted {
@@ -442,7 +455,7 @@ struct MessageBubble: View {
                     }
                     Text(message.role == .user ? "You" : "Claude")
                         .font(Typography.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(Linear.textSecondary)
                 }
 
                 // Message content - use fixed size to avoid layout explosion
@@ -558,7 +571,7 @@ struct SpecPreviewSheet: View {
                 Button("Refine More") {
                     dismiss()
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.linearSecondary)
 
                 Spacer()
 
@@ -571,12 +584,14 @@ struct SpecPreviewSheet: View {
                               systemImage: isUpdating ? "checkmark.circle.fill" : "plus.circle.fill")
                     }
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.linearPrimary(color: Accent.success))
                 .disabled(isCreating)
             }
         }
         .padding(Spacing.large)
         .frame(minWidth: 500, idealWidth: 600, minHeight: 450, idealHeight: 550)
+        .background(Linear.base)
+        .environment(\.colorScheme, .dark)
     }
 
     private func specSection(_ title: String, content: String) -> some View {

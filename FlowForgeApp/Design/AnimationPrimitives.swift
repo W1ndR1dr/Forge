@@ -49,28 +49,59 @@ enum TimingCurve {
 }
 
 // MARK: - Linear Timing
-// Simpler, snappier timing for Linear-style UI (no spring physics)
+// Exact values from Linear's CTO: hover transitions use exactly 150ms
+// Any deviation is treated as a quality defect
+//
+// | Interaction      | Duration | Curve/Spring                              |
+// |------------------|----------|-------------------------------------------|
+// | Hover in/out     | 150ms    | .easeInOut(duration: 0.15)                |
+// | Button press     | 120ms    | .snappy(duration: 0.12)                   |
+// | Selection change | 200ms    | .snappy(duration: 0.2)                    |
+// | View transitions | 300-400ms| .spring(response: 0.35, dampingFraction: 0.85) |
+// | Modal present    | 350ms    | .spring(response: 0.35, dampingFraction: 0.9)  |
 
 enum LinearTiming {
-    /// Fast — hovers, button presses (150ms)
-    static let fast: Double = 0.15
+    /// Hover in/out — 150ms (THE GOLDEN VALUE)
+    static let hover: Double = 0.15
 
-    /// Standard — most transitions (200ms)
-    static let standard: Double = 0.2
+    /// Button press — 120ms
+    static let press: Double = 0.12
 
-    /// Slow — modals, large movements (300ms)
-    static let slow: Double = 0.3
+    /// Selection change — 200ms
+    static let selection: Double = 0.2
+
+    /// View transitions — 350ms
+    static let transition: Double = 0.35
+
+    /// Modal presentation — 350ms
+    static let modal: Double = 0.35
+
+    // Legacy aliases
+    static var fast: Double { hover }
+    static var standard: Double { selection }
+    static var slow: Double { transition }
 }
 
 enum LinearEasing {
-    /// Fast ease-out for hovers
-    static let fast = Animation.easeOut(duration: LinearTiming.fast)
+    /// Hover — easeInOut at 150ms (not easeOut!)
+    static let hover = Animation.easeInOut(duration: LinearTiming.hover)
 
-    /// Standard ease-out for transitions
-    static let standard = Animation.easeOut(duration: LinearTiming.standard)
+    /// Button press — snappy spring at 120ms
+    static let press = Animation.snappy(duration: LinearTiming.press)
 
-    /// Slow ease-out for larger movements
-    static let slow = Animation.easeOut(duration: LinearTiming.slow)
+    /// Selection — snappy spring at 200ms
+    static let selection = Animation.snappy(duration: LinearTiming.selection)
+
+    /// View transition — spring with 0.85 damping
+    static let transition = Animation.spring(response: LinearTiming.transition, dampingFraction: 0.85)
+
+    /// Modal — spring with 0.9 damping (less bounce)
+    static let modal = Animation.spring(response: LinearTiming.modal, dampingFraction: 0.9)
+
+    // Legacy aliases
+    static var fast: Animation { hover }
+    static var standard: Animation { selection }
+    static var slow: Animation { transition }
 }
 
 // MARK: - Interactive Animation Modifiers
@@ -97,14 +128,14 @@ extension View {
     }
 
     /// Linear-style hover — background color shift instead of scale
-    /// Crisp, minimal, no physics
-    func linearHover(isHovered: Bool, hoverColor: Color = Linear.hover) -> some View {
+    /// Uses exact 150ms easeInOut timing
+    func linearHover(isHovered: Bool, hoverColor: Color = Linear.hoverBackground, radius: CGFloat = CornerRadius.medium) -> some View {
         self
             .background(
-                RoundedRectangle(cornerRadius: CornerRadius.large)
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
                     .fill(isHovered ? hoverColor : Color.clear)
             )
-            .animation(LinearEasing.fast, value: isHovered)
+            .animation(.easeInOut(duration: 0.15), value: isHovered)
     }
 
     /// Card drag effect — physics-based with rotation hint

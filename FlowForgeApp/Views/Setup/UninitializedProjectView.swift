@@ -6,67 +6,73 @@ struct UninitializedProjectView: View {
     let project: Project
 
     var body: some View {
-        VStack(spacing: DesignTokens.Spacing.xl) {
+        VStack(spacing: Spacing.xl) {
             Spacer()
 
             // Icon
             Image(systemName: "bolt.badge.clock")
-                .font(.system(size: 64))
-                .foregroundStyle(DesignTokens.Colors.primary.opacity(0.6))
+                .font(.system(size: 48))
+                .foregroundColor(Accent.primary.opacity(0.7))
                 .symbolRenderingMode(.hierarchical)
 
             // Title and description
-            VStack(spacing: DesignTokens.Spacing.sm) {
+            VStack(spacing: Spacing.small) {
                 Text("Set Up FlowForge")
-                    .font(.title2.weight(.semibold))
+                    .font(Typography.body)
+                    .fontWeight(.semibold)
+                    .foregroundColor(Linear.textPrimary)
 
                 Text("**\(project.name)** is a Git repository but hasn't been set up with FlowForge yet.")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
+                    .font(Typography.caption)
+                    .foregroundColor(Linear.textSecondary)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 400)
             }
 
             // Features list
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+            VStack(alignment: .leading, spacing: Spacing.small) {
                 featureRow(icon: "list.bullet.clipboard", text: "Track features in a visual kanban board")
                 featureRow(icon: "arrow.triangle.branch", text: "Work on multiple features in parallel")
                 featureRow(icon: "doc.text.magnifyingglass", text: "Generate AI prompts with full context")
                 featureRow(icon: "arrow.triangle.merge", text: "Merge with confidence")
             }
-            .padding(DesignTokens.Spacing.lg)
-            .background(DesignTokens.Colors.surface)
-            .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.lg))
+            .padding(Spacing.standard)
+            .background(Linear.elevated)
+            .cornerRadius(CornerRadius.large)
+            .overlay(
+                RoundedRectangle(cornerRadius: CornerRadius.large)
+                    .stroke(Linear.borderSubtle, lineWidth: 1)
+            )
 
             // Initialize button
             Button {
                 appState.projectToInitialize = project
                 appState.showingProjectSetup = true
             } label: {
-                HStack(spacing: DesignTokens.Spacing.sm) {
+                HStack(spacing: Spacing.small) {
                     Image(systemName: "bolt.fill")
                     Text("Initialize FlowForge")
                 }
-                .padding(.horizontal, DesignTokens.Spacing.lg)
-                .padding(.vertical, DesignTokens.Spacing.md)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.linearPrimary)
             .controlSize(.large)
 
             Spacer()
         }
-        .padding(DesignTokens.Spacing.xl)
+        .padding(Spacing.xl)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(DesignTokens.Colors.background)
+        .background(Linear.base)
+        .environment(\.colorScheme, .dark)
     }
 
     private func featureRow(icon: String, text: String) -> some View {
-        HStack(spacing: DesignTokens.Spacing.md) {
+        HStack(spacing: Spacing.medium) {
             Image(systemName: icon)
-                .foregroundStyle(DesignTokens.Colors.primary)
+                .foregroundColor(Accent.primary)
                 .frame(width: 24)
             Text(text)
-                .font(.subheadline)
+                .font(Typography.caption)
+                .foregroundColor(Linear.textSecondary)
         }
     }
 }

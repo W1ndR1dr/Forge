@@ -28,27 +28,77 @@ struct GeneralSettingsTab: View {
     @AppStorage("playSounds") private var playSounds = false
 
     var body: some View {
-        Form {
-            Section {
-                Toggle("Show \"parallel ok\" badges", isOn: $showParallelBadges)
-                    .help("Show badges on features that are safe to work on in parallel")
+        ScrollView {
+            VStack(alignment: .leading, spacing: Spacing.large) {
+                // Display section
+                VStack(alignment: .leading, spacing: Spacing.medium) {
+                    Text("DISPLAY")
+                        .sectionHeaderStyle()
 
-                Toggle("Play sounds on ship", isOn: $playSounds)
-                    .help("Play a celebration sound when you ship a feature")
-            } header: {
-                Text("Display")
-            }
+                    VStack(spacing: Spacing.small) {
+                        SettingsToggleRow(
+                            title: "Show \"parallel ok\" badges",
+                            subtitle: "Show badges on features safe to work on in parallel",
+                            isOn: $showParallelBadges
+                        )
 
-            Section {
-                Text("FlowForge helps you ship features faster by managing the complexity of parallel development. Just focus on what you want to build!")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            } header: {
-                Text("About")
+                        SettingsToggleRow(
+                            title: "Play sounds on ship",
+                            subtitle: "Play a celebration sound when you ship a feature",
+                            isOn: $playSounds
+                        )
+                    }
+                }
+                .linearSection()
+
+                // About section
+                VStack(alignment: .leading, spacing: Spacing.medium) {
+                    Text("ABOUT")
+                        .sectionHeaderStyle()
+
+                    Text("FlowForge helps you ship features faster by managing the complexity of parallel development. Just focus on what you want to build!")
+                        .font(Typography.caption)
+                        .foregroundColor(Linear.textSecondary)
+                }
+                .linearSection()
             }
+            .padding(Spacing.large)
         }
-        .formStyle(.grouped)
-        .padding()
+        .background(Linear.base)
+        .environment(\.colorScheme, .dark)
+    }
+}
+
+// MARK: - Settings Toggle Row
+
+struct SettingsToggleRow: View {
+    let title: String
+    var subtitle: String? = nil
+    @Binding var isOn: Bool
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: Spacing.micro) {
+                Text(title)
+                    .font(Typography.body)
+                    .foregroundColor(Linear.textPrimary)
+
+                if let subtitle = subtitle {
+                    Text(subtitle)
+                        .font(Typography.caption)
+                        .foregroundColor(Linear.textTertiary)
+                }
+            }
+
+            Spacer()
+
+            Toggle("", isOn: $isOn)
+                .labelsHidden()
+                .tint(Accent.primary)
+        }
+        .padding(Spacing.medium)
+        .background(Linear.card)
+        .cornerRadius(CornerRadius.medium)
     }
 }
 
@@ -71,89 +121,101 @@ struct ConnectionSettingsTab: View {
     }
 
     var body: some View {
-        Form {
-            Section {
-                HStack {
-                    TextField("hostname or IP", text: $serverURL)
-                        .textFieldStyle(.roundedBorder)
+        ScrollView {
+            VStack(alignment: .leading, spacing: Spacing.large) {
+                // Server section
+                VStack(alignment: .leading, spacing: Spacing.medium) {
+                    Text("FLOWFORGE SERVER")
+                        .sectionHeaderStyle()
 
-                    Button("Test") {
-                        testConnection()
+                    VStack(alignment: .leading, spacing: Spacing.small) {
+                        HStack(spacing: Spacing.medium) {
+                            TextField("hostname or IP", text: $serverURL)
+                                .textFieldStyle(.linear)
+                                .foregroundColor(Linear.textPrimary)
+
+                            Button("Test") {
+                                testConnection()
+                            }
+                            .buttonStyle(.linearSecondary)
+                            .disabled(isTestingConnection)
+                        }
+
+                        // Show normalized URL preview if different from input
+                        if showNormalizedPreview {
+                            HStack(spacing: Spacing.small) {
+                                Image(systemName: "arrow.right.circle")
+                                    .foregroundColor(Linear.textTertiary)
+                                Text(normalizedURL)
+                                    .font(Typography.caption)
+                                    .foregroundColor(Linear.textTertiary)
+                            }
+                        }
+
+                        // Connection status
+                        HStack(spacing: Spacing.small) {
+                            Circle()
+                                .fill(statusColor)
+                                .frame(width: 8, height: 8)
+
+                            Text(statusMessage)
+                                .font(Typography.caption)
+                                .foregroundColor(Linear.textSecondary)
+                        }
+
+                        // Test result
+                        if let result = connectionResult {
+                            HStack(spacing: Spacing.small) {
+                                Image(systemName: result.success ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                    .foregroundColor(result.success ? Accent.success : Accent.danger)
+
+                                Text(result.message)
+                                    .font(Typography.caption)
+                                    .foregroundColor(result.success ? Accent.success : Accent.danger)
+                            }
+                            .padding(.vertical, Spacing.small)
+                        }
+
+                        Text("Just enter hostname (e.g., \"raspberrypi\") — http:// and port added automatically")
+                            .font(.system(size: 10))
+                            .foregroundColor(Linear.textMuted)
                     }
-                    .disabled(isTestingConnection)
                 }
+                .linearSection()
 
-                // Show normalized URL preview if different from input
-                if showNormalizedPreview {
-                    HStack(spacing: Spacing.small) {
-                        Image(systemName: "arrow.right.circle")
-                            .foregroundColor(.secondary)
-                        Text(normalizedURL)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-
-                // Connection status
-                HStack(spacing: Spacing.small) {
-                    Circle()
-                        .fill(statusColor)
-                        .frame(width: 8, height: 8)
-
-                    Text(statusMessage)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-
-                    Spacer()
-                }
-
-                // Test result
-                if let result = connectionResult {
-                    HStack(spacing: Spacing.small) {
-                        Image(systemName: result.success ? "checkmark.circle.fill" : "xmark.circle.fill")
-                            .foregroundColor(result.success ? Accent.success : Accent.danger)
-
-                        Text(result.message)
-                            .font(.caption)
-                            .foregroundColor(result.success ? Accent.success : Accent.danger)
-                    }
-                    .padding(.vertical, Spacing.small)
-                }
-            } header: {
-                Text("FlowForge Server")
-            } footer: {
-                Text("Just enter hostname (e.g., \"raspberrypi\") — http:// and port added automatically")
-                    .font(.caption2)
-            }
-
-            Section {
+                // Apply button
                 Button("Apply Changes") {
                     applyChanges()
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.linearPrimary)
                 .disabled(normalizedURL == PlatformConfig.currentServerURL)
-            }
 
-            Section {
-                VStack(alignment: .leading, spacing: Spacing.small) {
-                    Text("The FlowForge server handles:")
-                        .font(.caption)
-                        .fontWeight(.medium)
+                // Info section
+                VStack(alignment: .leading, spacing: Spacing.medium) {
+                    Text("INFO")
+                        .sectionHeaderStyle()
 
-                    VStack(alignment: .leading, spacing: 2) {
-                        bulletPoint("Git worktree management")
-                        bulletPoint("Feature analysis & intelligence")
-                        bulletPoint("Merge operations")
-                        bulletPoint("Real-time sync via WebSocket")
+                    VStack(alignment: .leading, spacing: Spacing.small) {
+                        Text("The FlowForge server handles:")
+                            .font(Typography.caption)
+                            .fontWeight(.medium)
+                            .foregroundColor(Linear.textSecondary)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            bulletPoint("Git worktree management")
+                            bulletPoint("Feature analysis & intelligence")
+                            bulletPoint("Merge operations")
+                            bulletPoint("Real-time sync via WebSocket")
+                        }
+                        .foregroundColor(Linear.textTertiary)
                     }
                 }
-                .foregroundColor(.secondary)
-            } header: {
-                Text("Info")
+                .linearSection()
             }
+            .padding(Spacing.large)
         }
-        .formStyle(.grouped)
-        .padding()
+        .background(Linear.base)
+        .environment(\.colorScheme, .dark)
         .onAppear {
             serverURL = PlatformConfig.currentServerURL
         }
@@ -161,7 +223,7 @@ struct ConnectionSettingsTab: View {
 
     private var statusColor: Color {
         if isTestingConnection {
-            return .orange
+            return Accent.warning
         }
         return appState.isConnectedToServer ? Accent.success : Accent.danger
     }
@@ -178,7 +240,7 @@ struct ConnectionSettingsTab: View {
             Text("•")
             Text(text)
         }
-        .font(.caption)
+        .font(Typography.caption)
     }
 
     private func testConnection() {

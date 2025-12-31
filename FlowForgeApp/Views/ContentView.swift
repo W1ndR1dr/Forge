@@ -37,13 +37,15 @@ struct ContentView: View {
                         } else {
                             VStack(spacing: Spacing.standard) {
                                 Image(systemName: "tray")
-                                    .font(.system(size: 64))
-                                    .foregroundColor(.secondary)
+                                    .font(.system(size: 48))
+                                    .foregroundColor(Linear.textMuted)
                                 Text("No Project Selected")
-                                    .font(.title2)
-                                    .foregroundColor(.secondary)
+                                    .font(Typography.body)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(Linear.textSecondary)
                                 Text("Select a project from the sidebar")
-                                    .foregroundColor(.secondary)
+                                    .font(Typography.caption)
+                                    .foregroundColor(Linear.textTertiary)
                             }
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                         }
@@ -78,8 +80,9 @@ struct ContentView: View {
                 .animation(LinearEasing.fast, value: appState.errorMessage)
                 .animation(LinearEasing.fast, value: appState.successMessage)
             }
-            .background(Linear.base)
+            .background(Linear.background)
         }
+        .preferredColorScheme(.dark)
         .sheet(isPresented: Binding(
             get: { appState.showingProposalReview },
             set: { appState.showingProposalReview = $0 }
@@ -133,13 +136,14 @@ struct QuickAddFeatureSheet: View {
     @FocusState private var isFocused: Bool
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: Spacing.large) {
             Text("Quick Add Feature")
-                .font(.title2)
-                .fontWeight(.bold)
+                .font(Typography.body)
+                .fontWeight(.semibold)
+                .foregroundColor(Linear.textPrimary)
 
             TextField("Feature title", text: $featureTitle)
-                .textFieldStyle(.roundedBorder)
+                .textFieldStyle(.linear)
                 .focused($isFocused)
                 .onSubmit {
                     addFeature()
@@ -150,6 +154,7 @@ struct QuickAddFeatureSheet: View {
                     isPresented = false
                     featureTitle = ""
                 }
+                .buttonStyle(.linearSecondary)
                 .keyboardShortcut(.cancelAction)
 
                 Spacer()
@@ -157,12 +162,14 @@ struct QuickAddFeatureSheet: View {
                 Button("Add") {
                     addFeature()
                 }
+                .buttonStyle(.linearPrimary)
                 .keyboardShortcut(.defaultAction)
                 .disabled(featureTitle.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         }
-        .padding()
+        .padding(Spacing.large)
         .frame(width: 400)
+        .background(Linear.background)
         .onAppear {
             isFocused = true
         }

@@ -21,7 +21,7 @@ struct ProposalCard: View {
                     Text(proposal.title)
                         .font(.headline)
                         .strikethrough(proposal.status == .declined)
-                        .foregroundColor(proposal.status == .declined ? .secondary : .primary)
+                        .foregroundColor(proposal.status == .declined ? Linear.textSecondary : Linear.textPrimary)
 
                     // Priority badge
                     HStack(spacing: 8) {
@@ -39,7 +39,7 @@ struct ProposalCard: View {
             // Description
             Text(proposal.description)
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(Linear.textSecondary)
                 .lineLimit(isExpanded ? nil : 3)
 
             // Rationale (expandable)
@@ -47,12 +47,13 @@ struct ProposalCard: View {
                 DisclosureGroup(isExpanded: $isExpanded) {
                     Text(proposal.rationale)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(Linear.textSecondary)
                         .padding(.top, 4)
                 } label: {
                     Text("Rationale")
                         .font(.caption)
                         .fontWeight(.medium)
+                        .foregroundColor(Linear.textTertiary)
                 }
             }
 
@@ -61,81 +62,77 @@ struct ProposalCard: View {
                 FlowLayout(spacing: 4) {
                     ForEach(proposal.tags, id: \.self) { tag in
                         Text(tag)
-                            .font(.caption2)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.accentColor.opacity(0.2))
-                            .clipShape(Capsule())
+                            .font(Typography.badge)
+                            .padding(.horizontal, Spacing.small)
+                            .padding(.vertical, Spacing.micro)
+                            .background(Accent.primary.opacity(0.15))
+                            .foregroundColor(Accent.primary)
+                            .cornerRadius(CornerRadius.small)
                     }
                 }
             }
 
             // Action buttons
             if proposal.status == .pending {
-                HStack(spacing: 12) {
+                HStack(spacing: Spacing.medium) {
                     Button(action: onApprove) {
                         Label("Approve", systemImage: "checkmark.circle.fill")
-                            .font(.caption)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.green)
+                    .buttonStyle(.linearPrimary(color: Accent.success))
 
                     Button(action: onDecline) {
                         Label("Decline", systemImage: "xmark.circle.fill")
-                            .font(.caption)
                     }
-                    .buttonStyle(.bordered)
-                    .tint(.red)
+                    .buttonStyle(.linearSecondary(color: Accent.danger))
 
                     Button(action: onDefer) {
                         Label("Defer", systemImage: "clock.fill")
-                            .font(.caption)
                     }
-                    .buttonStyle(.bordered)
-                    .tint(.orange)
+                    .buttonStyle(.linearSecondary(color: Accent.warning))
 
                     Spacer()
                 }
-                .padding(.top, 4)
+                .padding(.top, Spacing.micro)
             }
         }
-        .padding(16)
+        .padding(Spacing.standard)
         .background(
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: CornerRadius.large)
                 .fill(backgroundColor)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: CornerRadius.large)
                 .stroke(borderColor, lineWidth: 1)
         )
         .opacity(proposal.status == .declined ? 0.6 : 1.0)
-        .animation(.easeInOut(duration: 0.2), value: proposal.status)
+        .animation(LinearEasing.fast, value: proposal.status)
+        .animation(LinearEasing.fast, value: isHovering)
         .onHover { isHovering = $0 }
     }
 
     private var backgroundColor: Color {
         switch proposal.status {
         case .approved:
-            return Color.green.opacity(0.1)
+            return Accent.success.opacity(0.1)
         case .declined:
-            return Color.red.opacity(0.05)
+            return Accent.danger.opacity(0.05)
         case .deferred:
-            return Color.orange.opacity(0.1)
+            return Accent.warning.opacity(0.1)
         case .pending:
-            return Color.textBackground
+            return Linear.card
         }
     }
 
     private var borderColor: Color {
         switch proposal.status {
         case .approved:
-            return Color.green.opacity(0.3)
+            return Accent.success.opacity(0.3)
         case .declined:
-            return Color.red.opacity(0.2)
+            return Accent.danger.opacity(0.2)
         case .deferred:
-            return Color.orange.opacity(0.3)
+            return Accent.warning.opacity(0.3)
         case .pending:
-            return Color.secondary.opacity(isHovering ? 0.3 : 0.1)
+            return isHovering ? Linear.borderVisible : Linear.borderSubtle
         }
     }
 }
@@ -147,22 +144,22 @@ struct PriorityBadge: View {
 
     var body: some View {
         Text("P\(priority)")
-            .font(.caption2)
-            .fontWeight(.bold)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(priorityColor.opacity(0.2))
+            .font(Typography.badge)
+            .fontWeight(.semibold)
+            .padding(.horizontal, Spacing.small)
+            .padding(.vertical, Spacing.micro)
+            .background(priorityColor.opacity(0.15))
             .foregroundColor(priorityColor)
-            .clipShape(Capsule())
+            .cornerRadius(CornerRadius.small)
     }
 
     private var priorityColor: Color {
         switch priority {
-        case 1: return .red
-        case 2: return .orange
-        case 3: return .yellow
-        case 4: return .blue
-        default: return .gray
+        case 1: return Accent.danger
+        case 2: return Accent.warning
+        case 3: return Accent.attention
+        case 4: return Accent.primary
+        default: return Linear.textTertiary
         }
     }
 }
@@ -172,8 +169,8 @@ struct ComplexityLabel: View {
 
     var body: some View {
         Text(complexity.capitalized)
-            .font(.caption2)
-            .foregroundColor(.secondary)
+            .font(Typography.badge)
+            .foregroundColor(Linear.textSecondary)
     }
 }
 
@@ -181,11 +178,11 @@ struct StatusIndicator: View {
     let status: ProposalStatus
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: Spacing.micro) {
             Image(systemName: iconName)
                 .font(.caption)
             Text(status.displayName)
-                .font(.caption)
+                .font(Typography.caption)
         }
         .foregroundColor(statusColor)
     }
@@ -201,10 +198,10 @@ struct StatusIndicator: View {
 
     private var statusColor: Color {
         switch status {
-        case .pending: return .secondary
-        case .approved: return .green
-        case .declined: return .red
-        case .deferred: return .orange
+        case .pending: return Linear.textSecondary
+        case .approved: return Accent.success
+        case .declined: return Accent.danger
+        case .deferred: return Accent.warning
         }
     }
 }

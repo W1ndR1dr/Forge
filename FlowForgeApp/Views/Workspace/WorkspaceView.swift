@@ -90,7 +90,7 @@ struct WorkspaceView: View {
                 }
                 .padding(Spacing.large)
             }
-            .background(Linear.base)
+            .background(Linear.background)
         }
     }
 
@@ -1227,7 +1227,7 @@ struct InboxCard: View {
         HStack(spacing: Spacing.medium) {
             // Icon - different for refined vs raw
             Image(systemName: isRefined ? "checkmark.circle" : "lightbulb")
-                .foregroundColor(isRefined ? Accent.success : .purple)
+                .foregroundColor(isRefined ? Accent.success : Accent.brainstorm)
                 .font(.system(size: 14))
 
             // Title and refinement status
@@ -1282,8 +1282,8 @@ struct InboxCard: View {
                             .font(Typography.caption)
                             .padding(.horizontal, Spacing.small)
                             .padding(.vertical, Spacing.micro)
-                            .background(Color.purple.opacity(0.2))
-                            .foregroundColor(.purple)
+                            .background(Accent.brainstorm.opacity(0.15))
+                            .foregroundColor(Accent.brainstorm)
                             .cornerRadius(CornerRadius.small)
                         }
                         .buttonStyle(.plain)

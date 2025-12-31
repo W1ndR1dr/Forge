@@ -21,10 +21,11 @@ struct ProposalReviewView: View {
             headerView
 
             Divider()
+                .background(Linear.borderSubtle)
 
             // Proposals list
             ScrollView {
-                LazyVStack(spacing: 12) {
+                LazyVStack(spacing: Spacing.medium) {
                     ForEach($proposals) { $proposal in
                         ProposalCard(
                             proposal: $proposal,
@@ -34,15 +35,18 @@ struct ProposalReviewView: View {
                         )
                     }
                 }
-                .padding()
+                .padding(Spacing.standard)
             }
 
             Divider()
+                .background(Linear.borderSubtle)
 
             // Footer with summary and actions
             footerView
         }
         .frame(minWidth: 600, minHeight: 500)
+        .background(Linear.base)
+        .environment(\.colorScheme, .dark)
         .alert("Add Features", isPresented: $showConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Add \(approvedCount) Feature\(approvedCount == 1 ? "" : "s")") {
@@ -67,13 +71,14 @@ struct ProposalReviewView: View {
 
     private var headerView: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: Spacing.micro) {
                 Text("Review Proposals")
-                    .font(.title2)
-                    .fontWeight(.bold)
+                    .font(Typography.body)
+                    .fontWeight(.semibold)
+                    .foregroundColor(Linear.textPrimary)
                 Text("\(proposals.count) proposal\(proposals.count == 1 ? "" : "s") from brainstorm session")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(Typography.caption)
+                    .foregroundColor(Linear.textSecondary)
             }
 
             Spacer()
@@ -101,8 +106,9 @@ struct ProposalReviewView: View {
             Button("Cancel") {
                 dismiss()
             }
+            .buttonStyle(.linearSecondary)
         }
-        .padding()
+        .padding(Spacing.standard)
     }
 
     // MARK: - Footer
@@ -110,11 +116,11 @@ struct ProposalReviewView: View {
     private var footerView: some View {
         HStack {
             // Summary
-            HStack(spacing: 16) {
-                SummaryBadge(count: approvedCount, label: "Approved", color: .green)
-                SummaryBadge(count: declinedCount, label: "Declined", color: .red)
-                SummaryBadge(count: deferredCount, label: "Deferred", color: .orange)
-                SummaryBadge(count: pendingCount, label: "Pending", color: .gray)
+            HStack(spacing: Spacing.standard) {
+                SummaryBadge(count: approvedCount, label: "Approved", color: Accent.success)
+                SummaryBadge(count: declinedCount, label: "Declined", color: Accent.danger)
+                SummaryBadge(count: deferredCount, label: "Deferred", color: Accent.warning)
+                SummaryBadge(count: pendingCount, label: "Pending", color: Linear.textTertiary)
             }
 
             Spacer()
@@ -126,16 +132,16 @@ struct ProposalReviewView: View {
                     onComplete(proposals)
                     dismiss()
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.linearSecondary)
             }
 
             Button("Add Approved to Registry") {
                 showConfirmation = true
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.linearPrimary(color: Accent.success))
             .disabled(approvedCount == 0 || isSubmitting)
         }
-        .padding()
+        .padding(Spacing.standard)
     }
 
     // MARK: - Computed Properties
@@ -189,7 +195,7 @@ struct ProposalReviewView: View {
 
         Task {
             do {
-                let response = try await apiClient.approveProposals(
+                _ = try await apiClient.approveProposals(
                     project: projectName,
                     proposals: approvedProposals
                 )
@@ -217,13 +223,14 @@ struct SummaryBadge: View {
     let color: Color
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: Spacing.micro) {
             Text("\(count)")
-                .font(.headline)
+                .font(Typography.body)
+                .fontWeight(.semibold)
                 .foregroundColor(color)
             Text(label)
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(Typography.caption)
+                .foregroundColor(Linear.textSecondary)
         }
     }
 }

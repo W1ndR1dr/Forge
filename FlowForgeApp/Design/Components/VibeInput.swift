@@ -38,18 +38,20 @@ struct VibeInput: View {
 
     private var inputBackground: Color {
         if isFocused {
-            return Linear.card
+            return Linear.surface
         } else if isHovered {
-            return Linear.hover
+            return Linear.hoverBackground
         }
-        return Linear.elevated
+        return Linear.surface
     }
 
     private var borderColor: Color {
         if isFocused {
-            return Linear.borderVisible
+            return Linear.borderFocus
+        } else if isHovered {
+            return Linear.borderHover
         }
-        return Linear.borderSubtle
+        return Linear.border
     }
 
     var body: some View {
@@ -80,7 +82,7 @@ struct VibeInput: View {
                                 .font(.system(size: 24))
                         }
                     }
-                    .foregroundColor(canSubmit ? Accent.primary : .secondary.opacity(0.5))
+                    .foregroundColor(canSubmit ? Linear.accent : Linear.textMuted)
                 }
                 .buttonStyle(.plain)
                 .disabled(!canSubmit)
@@ -95,8 +97,8 @@ struct VibeInput: View {
                 RoundedRectangle(cornerRadius: CornerRadius.large)
                     .stroke(borderColor, lineWidth: 1)
             )
-            .animation(LinearEasing.fast, value: isFocused)
-            .animation(LinearEasing.fast, value: isHovered)
+            .animation(.easeInOut(duration: 0.15), value: isFocused)
+            .animation(.easeInOut(duration: 0.15), value: isHovered)
             .onHover { isHovered = $0 }
 
             // Ideas are unlimited - discipline comes at START, not CAPTURE
@@ -157,7 +159,7 @@ struct VibeInputPreview: View {
         }
         .padding(Spacing.large)
         .frame(width: 500, height: 300)
-        .background(Linear.base)
+        .background(Linear.background)
     }
 }
 

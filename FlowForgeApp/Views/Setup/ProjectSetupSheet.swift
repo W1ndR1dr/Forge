@@ -18,10 +18,11 @@ struct ProjectSetupSheet: View {
             header
 
             Divider()
+                .background(Linear.borderSubtle)
 
             // Content
             ScrollView {
-                VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+                VStack(alignment: .leading, spacing: Spacing.large) {
                     projectInfo
                     modeSelector
                     if !useQuickMode {
@@ -29,75 +30,86 @@ struct ProjectSetupSheet: View {
                     }
                     whatGetsCreated
                 }
-                .padding(DesignTokens.Spacing.lg)
+                .padding(Spacing.large)
             }
 
             Divider()
+                .background(Linear.borderSubtle)
 
             // Footer with actions
             footer
         }
         .frame(width: 480, height: useQuickMode ? 420 : 560)
+        .background(Linear.base)
+        .environment(\.colorScheme, .dark)
     }
 
     private var header: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: Spacing.micro) {
                 Text("Initialize FlowForge")
-                    .font(.headline)
+                    .font(Typography.body)
+                    .fontWeight(.semibold)
+                    .foregroundColor(Linear.textPrimary)
                 Text(project.name)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(Typography.caption)
+                    .foregroundColor(Linear.textSecondary)
             }
             Spacer()
             Button {
                 dismiss()
             } label: {
                 Image(systemName: "xmark.circle.fill")
-                    .foregroundStyle(.secondary)
-                    .font(.title2)
+                    .foregroundColor(Linear.textMuted)
+                    .font(.title3)
             }
             .buttonStyle(.plain)
         }
-        .padding(DesignTokens.Spacing.md)
+        .padding(Spacing.standard)
     }
 
     private var projectInfo: some View {
-        HStack(spacing: DesignTokens.Spacing.md) {
+        HStack(spacing: Spacing.medium) {
             Image(systemName: "folder.badge.gearshape")
-                .font(.largeTitle)
-                .foregroundStyle(DesignTokens.Colors.primary)
+                .font(.title2)
+                .foregroundColor(Accent.primary)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: Spacing.micro) {
                 Text(project.name)
-                    .font(.headline)
+                    .font(Typography.body)
+                    .fontWeight(.medium)
+                    .foregroundColor(Linear.textPrimary)
                 Text(project.path)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(Typography.caption)
+                    .foregroundColor(Linear.textTertiary)
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
 
             Spacer()
         }
-        .padding(DesignTokens.Spacing.md)
-        .background(DesignTokens.Colors.surface)
-        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.md))
+        .padding(Spacing.medium)
+        .background(Linear.elevated)
+        .cornerRadius(CornerRadius.medium)
+        .overlay(
+            RoundedRectangle(cornerRadius: CornerRadius.medium)
+                .stroke(Linear.borderSubtle, lineWidth: 1)
+        )
     }
 
     private var modeSelector: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            Text("Setup Mode")
-                .font(.subheadline.weight(.medium))
+        VStack(alignment: .leading, spacing: Spacing.small) {
+            Text("SETUP MODE")
+                .sectionHeaderStyle()
 
-            HStack(spacing: DesignTokens.Spacing.sm) {
+            HStack(spacing: Spacing.small) {
                 modeButton(
                     title: "Quick",
                     subtitle: "Just the essentials",
                     icon: "bolt.fill",
                     isSelected: useQuickMode
                 ) {
-                    withAnimation(.spring(response: 0.3)) {
+                    withAnimation(LinearEasing.fast) {
                         useQuickMode = true
                     }
                 }
@@ -108,7 +120,7 @@ struct ProjectSetupSheet: View {
                     icon: "slider.horizontal.3",
                     isSelected: !useQuickMode
                 ) {
-                    withAnimation(.spring(response: 0.3)) {
+                    withAnimation(LinearEasing.fast) {
                         useQuickMode = false
                     }
                 }
@@ -124,76 +136,88 @@ struct ProjectSetupSheet: View {
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            VStack(spacing: DesignTokens.Spacing.xs) {
+            VStack(spacing: Spacing.small) {
                 Image(systemName: icon)
-                    .font(.title2)
+                    .font(.title3)
+                    .foregroundColor(isSelected ? Accent.primary : Linear.textSecondary)
                 Text(title)
-                    .font(.subheadline.weight(.medium))
+                    .font(Typography.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(isSelected ? Linear.textPrimary : Linear.textSecondary)
                 Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(Typography.badge)
+                    .foregroundColor(Linear.textTertiary)
             }
             .frame(maxWidth: .infinity)
-            .padding(DesignTokens.Spacing.md)
-            .background(isSelected ? DesignTokens.Colors.primary.opacity(0.1) : DesignTokens.Colors.surface)
+            .padding(Spacing.medium)
+            .background(isSelected ? Accent.primary.opacity(0.1) : Linear.card)
+            .cornerRadius(CornerRadius.medium)
             .overlay(
-                RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
-                    .stroke(isSelected ? DesignTokens.Colors.primary : Color.clear, lineWidth: 2)
+                RoundedRectangle(cornerRadius: CornerRadius.medium)
+                    .stroke(isSelected ? Accent.primary.opacity(0.5) : Linear.borderSubtle, lineWidth: 1)
             )
-            .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.md))
         }
         .buttonStyle(.plain)
     }
 
     private var guidedFields: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+        VStack(alignment: .leading, spacing: Spacing.medium) {
+            VStack(alignment: .leading, spacing: Spacing.small) {
                 Text("Project Description")
-                    .font(.subheadline.weight(.medium))
+                    .font(Typography.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(Linear.textSecondary)
                 TextField("What does this project do?", text: $projectDescription, axis: .vertical)
-                    .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(.linear)
                     .lineLimit(2...4)
             }
 
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+            VStack(alignment: .leading, spacing: Spacing.small) {
                 Text("Vision")
-                    .font(.subheadline.weight(.medium))
+                    .font(Typography.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(Linear.textSecondary)
                 TextField("Where is this project headed?", text: $projectVision, axis: .vertical)
-                    .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(.linear)
                     .lineLimit(2...4)
             }
         }
     }
 
     private var whatGetsCreated: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            Text("What gets created")
-                .font(.subheadline.weight(.medium))
+        VStack(alignment: .leading, spacing: Spacing.small) {
+            Text("WHAT GETS CREATED")
+                .sectionHeaderStyle()
 
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+            VStack(alignment: .leading, spacing: Spacing.small) {
                 fileItem(".flowforge/", "FlowForge configuration directory")
                 fileItem("config.json", "Project settings")
                 fileItem("registry.json", "Feature database")
                 fileItem("project-context.md", "AI context for prompts")
             }
-            .padding(DesignTokens.Spacing.sm)
-            .background(DesignTokens.Colors.surface)
-            .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.sm))
+            .padding(Spacing.medium)
+            .background(Linear.elevated)
+            .cornerRadius(CornerRadius.medium)
+            .overlay(
+                RoundedRectangle(cornerRadius: CornerRadius.medium)
+                    .stroke(Linear.borderSubtle, lineWidth: 1)
+            )
         }
     }
 
     private func fileItem(_ name: String, _ description: String) -> some View {
-        HStack(spacing: DesignTokens.Spacing.sm) {
+        HStack(spacing: Spacing.small) {
             Image(systemName: name.hasSuffix("/") ? "folder.fill" : "doc.fill")
-                .foregroundStyle(.secondary)
+                .foregroundColor(Linear.textMuted)
                 .frame(width: 16)
             Text(name)
-                .font(.caption.monospaced())
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundColor(Linear.textSecondary)
             Text("-")
-                .foregroundStyle(.tertiary)
+                .foregroundColor(Linear.textMuted)
             Text(description)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(Typography.badge)
+                .foregroundColor(Linear.textTertiary)
             Spacer()
         }
     }
@@ -203,6 +227,7 @@ struct ProjectSetupSheet: View {
             Button("Cancel") {
                 dismiss()
             }
+            .buttonStyle(.linearSecondary)
             .keyboardShortcut(.escape)
 
             Spacer()
@@ -212,7 +237,7 @@ struct ProjectSetupSheet: View {
                     await initializeProject()
                 }
             } label: {
-                HStack(spacing: DesignTokens.Spacing.xs) {
+                HStack(spacing: Spacing.small) {
                     if isInitializing {
                         ProgressView()
                             .controlSize(.small)
@@ -220,11 +245,11 @@ struct ProjectSetupSheet: View {
                     Text(isInitializing ? "Initializing..." : "Initialize")
                 }
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.linearPrimary)
             .disabled(isInitializing)
             .keyboardShortcut(.return)
         }
-        .padding(DesignTokens.Spacing.md)
+        .padding(Spacing.standard)
     }
 
     private func initializeProject() async {

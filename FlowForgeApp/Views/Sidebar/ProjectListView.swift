@@ -22,6 +22,7 @@ struct ProjectListView: View {
             ForEach(appState.visibleSortedProjects) { project in
                 ProjectRow(project: project)
                     .tag(project)
+                    .listRowBackground(Color.clear)
                     .contextMenu {
                         Button("Hide Project") {
                             appState.hideProject(project)
@@ -37,6 +38,7 @@ struct ProjectListView: View {
                             ProjectRow(project: project)
                                 .tag(project)
                                 .opacity(0.6)
+                                .listRowBackground(Color.clear)
                                 .contextMenu {
                                     Button("Show Project") {
                                         appState.showProject(project)
@@ -50,13 +52,13 @@ struct ProjectListView: View {
                             hiddenSectionExpanded.toggle()
                         }
                     } label: {
-                        HStack(spacing: 4) {
+                        HStack(spacing: Spacing.micro) {
                             Image(systemName: hiddenSectionExpanded ? "chevron.down" : "chevron.right")
                                 .font(.caption2)
-                                .foregroundStyle(.secondary)
+                                .foregroundColor(Linear.textMuted)
                             Text("Hidden (\(appState.hiddenProjects.count))")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                                .font(Typography.caption)
+                                .foregroundColor(Linear.textMuted)
                             Spacer()
                         }
                     }
@@ -64,7 +66,10 @@ struct ProjectListView: View {
                 }
             }
         }
-        .navigationTitle("Projects")
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(Linear.background)
+        .environment(\.defaultMinListRowHeight, 36)
         .toolbar {
             ToolbarItem(placement: .automatic) {
                 SortPicker(selection: $state.projectSortOrder)
@@ -86,40 +91,52 @@ struct ProjectListView: View {
 
 struct ProjectRow: View {
     let project: Project
+    @State private var isHovered = false
 
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
+        HStack(spacing: 8) {
+            // Project icon
+            Image(systemName: project.needsInitialization ? "folder.badge.gearshape" : "folder.fill")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(project.needsInitialization ? Linear.warning : Linear.textSecondary)
+                .frame(width: 18)
+
+            VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(project.name)
-                        .font(.headline)
+                        .font(.inter(14, weight: .medium))
+                        .foregroundColor(Linear.textPrimary)
 
                     if project.needsInitialization {
                         Text("Setup")
-                            .font(.caption2.weight(.medium))
+                            .font(.inter(10, weight: .medium))
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(DesignTokens.Colors.warning.opacity(0.15))
-                            .foregroundStyle(DesignTokens.Colors.warning)
-                            .clipShape(Capsule())
+                            .background(Linear.warning.opacity(0.15))
+                            .foregroundColor(Linear.warning)
+                            .cornerRadius(CornerRadius.small)
                     }
                 }
                 Text(project.path)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(.inter(11))
+                    .foregroundColor(Linear.textTertiary)
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
 
             Spacer()
-
-            if project.needsInitialization {
-                Image(systemName: "bolt.badge.clock")
-                    .foregroundStyle(.secondary)
-                    .font(.caption)
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 12)
+        .background(
+            RoundedRectangle(cornerRadius: CornerRadius.medium, style: .continuous)
+                .fill(isHovered ? Linear.hoverBackground : Color.clear)
+        )
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
             }
         }
-        .padding(.vertical, 4)
         .opacity(project.needsInitialization ? 0.8 : 1.0)
     }
 }
