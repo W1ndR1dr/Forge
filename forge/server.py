@@ -1367,6 +1367,116 @@ async def parse_brainstorm_output(project: str, request: BrainstormParseRequest)
     }
 
 
+class GenerateIdeasRequest(BaseModel):
+    """Request to generate AI-powered feature ideas."""
+    count: int = 5
+
+
+@app.post("/api/{project}/ideas/generate")
+async def generate_ideas(project: str, request: GenerateIdeasRequest):
+    """
+    Generate AI-powered feature ideas based on project context.
+
+    Uses Claude CLI to analyze existing features and suggest complementary ideas.
+    This requires the Mac to be online (for Claude CLI access).
+    """
+    # Get project context (from Pi-local storage)
+    try:
+        project_path, config, registry = mcp_server._get_project_context(project)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    # Get existing feature titles for context
+    feature_titles = [f.title for f in registry.list_all_features()]
+
+    # For remote mode, we need to run Claude CLI on Mac via SSH
+    # For local mode, run directly
+    if remote_executor:
+        # Check if Mac is online
+        mac_online = remote_executor.check_connection()
+        if not mac_online:
+            raise HTTPException(
+                status_code=503,
+                detail="Mac is offline. AI idea generation requires Claude CLI access on Mac.",
+            )
+
+        # Run Claude CLI on Mac via SSH
+        # We'll construct the prompt and run it remotely
+        if feature_titles:
+            features_text = "\\n".join(f"- {f}" for f in feature_titles)
+        else:
+            features_text = "No features defined yet."
+
+        prompt = f"""You are helping generate feature ideas for {project}.
+
+Existing Features:
+{features_text}
+
+Generate {request.count} feature ideas that would complement what already exists.
+
+Focus on:
+- Features that are specific and implementable in a few hours
+- Ideas that address gaps or enhance existing functionality
+- Practical improvements over novel concepts
+
+If no existing features are listed, suggest general developer productivity features appropriate for a software project.
+
+Return as JSON array:
+[
+  {{"title": "Short, specific title", "description": "1-2 sentence description of what it does", "rationale": "Why this would be valuable"}}
+]
+
+Return ONLY the JSON array, no other text."""
+
+        # Escape the prompt for shell
+        import shlex
+        escaped_prompt = shlex.quote(prompt)
+        result = remote_executor.run(f"claude --print -p {escaped_prompt}", timeout=90)
+
+        if not result.success:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Claude CLI failed: {result.stderr or result.stdout}",
+            )
+
+        # Parse the JSON response
+        try:
+            import json
+            ideas = json.loads(result.stdout.strip())
+            if isinstance(ideas, list):
+                validated = []
+                for item in ideas:
+                    if isinstance(item, dict) and "title" in item:
+                        validated.append({
+                            "title": item.get("title", ""),
+                            "description": item.get("description", ""),
+                            "rationale": item.get("rationale", ""),
+                        })
+                ideas = validated[:request.count]
+            else:
+                ideas = []
+        except json.JSONDecodeError:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to parse AI response as JSON. Try again.",
+            )
+    else:
+        # Local mode - use IntelligenceEngine directly
+        mac_path = project_path
+        intelligence = IntelligenceEngine(mac_path)
+        ideas = intelligence.generate_ideas(
+            project_name=project,
+            existing_features=feature_titles,
+            count=request.count,
+        )
+
+    return {
+        "ideas": ideas,
+        "count": len(ideas),
+        "project": project,
+    }
+
+
 class ApproveProposalsRequest(BaseModel):
     """Request to approve and add proposals to registry."""
     proposals: list[dict]  # List of proposal dicts to add

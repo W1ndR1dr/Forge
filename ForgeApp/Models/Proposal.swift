@@ -102,3 +102,41 @@ struct PromptResponse: Codable {
         case featureId = "feature_id"
     }
 }
+
+// MARK: - AI Idea Generation
+
+/// An AI-generated feature idea
+struct GeneratedIdea: Identifiable, Codable, Hashable {
+    var id: UUID = UUID()
+    var title: String
+    var description: String
+    var rationale: String
+
+    enum CodingKeys: String, CodingKey {
+        case title
+        case description
+        case rationale
+    }
+
+    init(id: UUID = UUID(), title: String, description: String = "", rationale: String = "") {
+        self.id = id
+        self.title = title
+        self.description = description
+        self.rationale = rationale
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = UUID()
+        self.title = try container.decode(String.self, forKey: .title)
+        self.description = try container.decodeIfPresent(String.self, forKey: .description) ?? ""
+        self.rationale = try container.decodeIfPresent(String.self, forKey: .rationale) ?? ""
+    }
+}
+
+/// Response from generating AI ideas
+struct GenerateIdeasResponse: Codable {
+    let ideas: [GeneratedIdea]
+    let count: Int
+    let project: String
+}

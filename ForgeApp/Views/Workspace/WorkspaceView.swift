@@ -177,6 +177,8 @@ struct WorkspaceView: View {
 
                 Spacer()
 
+                IdeaGeneratorButton()
+
                 SortPicker(selection: $state.inboxSortOrder)
             }
 

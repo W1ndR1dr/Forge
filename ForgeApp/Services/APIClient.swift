@@ -134,6 +134,14 @@ actor APIClient {
         return response.proposals
     }
 
+    /// Generate AI-powered feature ideas based on project context
+    func generateIdeas(project: String, count: Int = 5) async throws -> [GeneratedIdea] {
+        let url = baseURL.appendingPathComponent("api/\(project)/ideas/generate")
+        let body: [String: Any] = ["count": count]
+        let response: GenerateIdeasResponse = try await post(url: url, body: body)
+        return response.ideas
+    }
+
     /// Approve proposals and add them to the registry
     func approveProposals(project: String, proposals: [Proposal]) async throws -> ApproveProposalsResponse {
         let url = baseURL.appendingPathComponent("api/\(project)/proposals/approve")
