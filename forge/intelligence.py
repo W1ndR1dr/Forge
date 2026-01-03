@@ -481,3 +481,65 @@ As you implement this feature, embody the perspectives of:
 
 Think as they would think. What would {experts[0].name} obsess over? What would they refuse to compromise on? Let their standards guide your decisions.
 """
+
+    def generate_ideas(
+        self,
+        project_name: str,
+        existing_features: list[str],
+        count: int = 5,
+    ) -> list[dict]:
+        """
+        Generate feature ideas based on project context.
+
+        Uses Claude to suggest complementary features that would enhance
+        the project based on what already exists.
+
+        Returns list of ideas with title, description, rationale.
+        """
+        # Build context about existing features
+        if existing_features:
+            features_text = "\n".join(f"- {f}" for f in existing_features)
+        else:
+            features_text = "No features defined yet."
+
+        prompt = f"""You are helping generate feature ideas for {project_name}.
+
+Existing Features:
+{features_text}
+
+Generate {count} feature ideas that would complement what already exists.
+
+Focus on:
+- Features that are specific and implementable in a few hours
+- Ideas that address gaps or enhance existing functionality
+- Practical improvements over novel concepts
+
+If no existing features are listed, suggest general developer productivity features appropriate for a software project.
+
+Return as JSON array:
+[
+  {{"title": "Short, specific title", "description": "1-2 sentence description of what it does", "rationale": "Why this would be valuable"}}
+]
+
+Return ONLY the JSON array, no other text."""
+
+        response = self._call_claude(prompt, timeout=60)
+
+        try:
+            # Parse JSON response
+            data = json.loads(response)
+            # Ensure it's a list and each item has required fields
+            if isinstance(data, list):
+                validated = []
+                for item in data:
+                    if isinstance(item, dict) and "title" in item:
+                        validated.append({
+                            "title": item.get("title", ""),
+                            "description": item.get("description", ""),
+                            "rationale": item.get("rationale", ""),
+                        })
+                return validated[:count]  # Limit to requested count
+            return []
+        except (json.JSONDecodeError, TypeError):
+            # Fallback: return empty list if parsing fails
+            return []

@@ -742,6 +742,30 @@ class AppState {
         }
     }
 
+    // MARK: - AI Idea Generation
+
+    /// Generate AI-powered feature ideas based on project context
+    func generateIdeas(count: Int = 5) async throws -> [GeneratedIdea] {
+        guard let project = selectedProject else {
+            throw APIError.requestFailed("No project selected")
+        }
+        return try await apiClient.generateIdeas(project: project.name, count: count)
+    }
+
+    /// Add a generated idea to the inbox
+    func addIdeaToInbox(_ idea: GeneratedIdea) async throws {
+        guard let project = selectedProject else {
+            throw APIError.requestFailed("No project selected")
+        }
+        try await apiClient.addFeature(
+            project: project.name,
+            title: idea.title,
+            description: idea.description,
+            status: "inbox"
+        )
+        showSuccess("Added to inbox!")
+    }
+
     // MARK: - Add Feature to Queue
 
     /// Add a feature directly to the queue (no analysis gate)
